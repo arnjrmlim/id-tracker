@@ -41,11 +41,6 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            // Use the request's own URL base so Storage::url() works correctly
-            // regardless of whether users access via localhost, hostname, or LAN IP.
-            // The application's image display always uses the streaming route
-            // (route('id-records.image', ...)) so this url is only a fallback
-            // for any direct Storage::url() calls.
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
