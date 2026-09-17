@@ -7,6 +7,8 @@ use App\Models\IdRecord;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
@@ -16,18 +18,20 @@ class IdRecordImport implements ToCollection, WithHeadingRow
 
     /**
      * The columns checked when deciding whether a row is completely empty.
-     * A row where ALL of these are blank/whitespace is silently skipped.
      */
     private const DATA_COLUMNS = ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN'];
 
+    /** Allowed MIME types for imported image files. */
+    private const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
+
     private string $mode;
-    private array  $errors  = [];
+    private array  $errors          = [];
     private array  $skippedMessages = [];
-    private int    $created = 0;
-    private int    $updated = 0;
-    private int    $skipped = 0;
-    private int    $failed  = 0;
-    private int    $total   = 0;  // meaningful (non-blank) rows only
+    private int    $created         = 0;
+    private int    $updated         = 0;
+    private int    $skipped         = 0;
+    private int    $failed          = 0;
+    private int    $total           = 0;
 
     public function __construct(string $mode = 'both')
     {
@@ -39,16 +43,12 @@ class IdRecordImport implements ToCollection, WithHeadingRow
         foreach ($rows as $index => $row) {
             $normalized = $this->normalizeRow($row->toArray());
 
-            // Skip rows that are completely empty across all data columns.
-            // These are formatted-but-blank Excel rows and must produce no
-            // errors, no counts, and no database operations.
             if ($this->isEmptyRow($normalized)) {
                 continue;
             }
 
-            // Only meaningful rows count toward the total.
             $this->total++;
-            $rowNum = $index + 2; // +2: row 1 is the header
+            $rowNum = $index + 2;
 
             try {
                 $this->processRow($normalized, $rowNum);
@@ -62,9 +62,6 @@ class IdRecordImport implements ToCollection, WithHeadingRow
 
     // ── Row helpers ────────────────────────────────────────────────────────────
 
-    /**
-     * Normalise keys to uppercase and trim every string value.
-     */
     private function normalizeRow(array $row): array
     {
         $upper = array_change_key_case(
@@ -75,7 +72,6 @@ class IdRecordImport implements ToCollection, WithHeadingRow
             CASE_UPPER
         );
 
-        // Trim every value so whitespace-only cells are treated as empty.
         foreach ($upper as $key => $value) {
             $upper[$key] = is_string($value) ? trim($value) : $value;
         }
@@ -83,16 +79,11 @@ class IdRecordImport implements ToCollection, WithHeadingRow
         return $upper;
     }
 
-    /**
-     * Returns true when every data column is empty/null/whitespace.
-     * Such rows are silently ignored — they are formatted-but-blank Excel rows.
-     */
     private function isEmptyRow(array $row): bool
     {
         foreach (self::DATA_COLUMNS as $col) {
-            $value = trim((string) ($row[$col] ?? ''));
-            if ($value !== '') {
-                return false; // at least one column has content → meaningful row
+            if (trim((string) ($row[$col] ?? '')) !== '') {
+                return false;
             }
         }
         return true;
@@ -102,11 +93,9 @@ class IdRecordImport implements ToCollection, WithHeadingRow
 
     private function processRow(array $row, int $rowNum): void
     {
-        // Values are already trimmed by normalizeRow().
         $name = (string) ($row['NAME'] ?? '');
         $idno = (string) ($row['IDNO'] ?? '');
 
-        // Validate required fields — partial rows must still produce errors.
         if ($name === '') {
             $this->failed++;
             $this->errors[] = "Row {$rowNum}: NAME is required.";
@@ -122,23 +111,39 @@ class IdRecordImport implements ToCollection, WithHeadingRow
         $dateHired = $this->parseDate($row['DATEH'] ?? null, $rowNum, 'DATEH');
         $birthDate = $this->parseDate($row['BDATE'] ?? null, $rowNum, 'BDATE');
 
-        $imgPath  = ($row['IMG']  ?? '') ?: null;
-        $signPath = ($row['SIGN'] ?? '') ?: null;
+        $rawImg  = ($row['IMG']  ?? '') ?: null;
+        $rawSign = ($row['SIGN'] ?? '') ?: null;
 
-        $imgSource  = filled($imgPath)  ? IdRecord::SOURCE_NETWORK : null;
-        $signSource = filled($signPath) ? IdRecord::SOURCE_NETWORK : null;
+        // ── Resolve image source ───────────────────────────────────────────────
+        // If the path references a file that is accessible from the server right
+        // now (e.g. the import is being run on the server PC or via a mapped
+        // network share the server process can read), copy the file into Laravel
+        // storage and save the relative path.  This makes the image immediately
+        // accessible to any LAN client through the web application.
+        //
+        // If the path is not accessible (client-local path, inaccessible share,
+        // etc.), fall back to storing it as a 'network' reference so the path is
+        // preserved and can be resolved later.
+
+        [$imgSource, $imgPath, $imgUploadPath] = $this->resolveImageField(
+            $rawImg, $idno, 'id-images', ''
+        );
+
+        [$signSource, $signPath, $signUploadPath] = $this->resolveImageField(
+            $rawSign, $idno, 'signatures', '_signature'
+        );
 
         $existing = IdRecord::where('id_number', $idno)->first();
 
         if ($existing) {
             if ($this->mode === 'add') {
-                // Business-rule skip — not a failure.
                 $this->skipped++;
                 $this->skippedMessages[] = "Row {$rowNum}: Existing IDNO {$idno} skipped.";
                 return;
             }
 
-            // UPDATE — never change status, never touch uploaded files.
+            // UPDATE — never change status, never remove an existing upload
+            // unless the new import row explicitly provides a replacement.
             $updateData = [
                 'name'              => $name,
                 'position'          => ($row['POS'] ?? '') ?: null,
@@ -147,15 +152,16 @@ class IdRecordImport implements ToCollection, WithHeadingRow
                 'emergency_contact' => ($row['ECON'] ?? '') ?: null,
             ];
 
-            if (filled($imgPath)) {
+            if ($rawImg !== null) {
                 $updateData['image_path']        = $imgPath;
-                $updateData['image_source']      = IdRecord::SOURCE_NETWORK;
-                $updateData['image_upload_path'] = null;
+                $updateData['image_source']       = $imgSource;
+                $updateData['image_upload_path']  = $imgUploadPath;
             }
-            if (filled($signPath)) {
+
+            if ($rawSign !== null) {
                 $updateData['signature_path']        = $signPath;
-                $updateData['signature_source']      = IdRecord::SOURCE_NETWORK;
-                $updateData['signature_upload_path'] = null;
+                $updateData['signature_source']       = $signSource;
+                $updateData['signature_upload_path']  = $signUploadPath;
             }
 
             $existing->update($updateData);
@@ -168,22 +174,95 @@ class IdRecordImport implements ToCollection, WithHeadingRow
             }
 
             IdRecord::create([
-                'name'                  => $name,
-                'position'              => ($row['POS'] ?? '') ?: null,
-                'id_number'             => $idno,
-                'date_hired'            => $dateHired,
-                'birth_date'            => $birthDate,
-                'emergency_contact'     => ($row['ECON'] ?? '') ?: null,
-                'image_path'            => $imgPath,
-                'image_source'          => $imgSource,
-                'image_upload_path'     => null,
-                'signature_path'        => $signPath,
-                'signature_source'      => $signSource,
-                'signature_upload_path' => null,
-                'status'                => IdStatus::PENDING->value,
+                'name'                   => $name,
+                'position'               => ($row['POS'] ?? '') ?: null,
+                'id_number'              => $idno,
+                'date_hired'             => $dateHired,
+                'birth_date'             => $birthDate,
+                'emergency_contact'      => ($row['ECON'] ?? '') ?: null,
+                'image_path'             => $imgPath,
+                'image_source'           => $imgSource,
+                'image_upload_path'      => $imgUploadPath,
+                'signature_path'         => $signPath,
+                'signature_source'       => $signSource,
+                'signature_upload_path'  => $signUploadPath,
+                'status'                 => IdStatus::PENDING->value,
             ]);
             $this->created++;
         }
+    }
+
+    // ── Image field resolver ───────────────────────────────────────────────────
+
+    /**
+     * Determine the best storage strategy for an IMG/SIGN path from Excel.
+     *
+     * Strategy:
+     *   1. If the raw path is empty  → null source, no paths stored.
+     *   2. If the file is accessible from the server → copy into Laravel public
+     *      storage, return source='upload', relative upload path, image_path=null.
+     *   3. If the file is not accessible (client-local / inaccessible share)
+     *      → store as source='network', preserve raw path for future reference.
+     *
+     * Returns: [source, image_path, image_upload_path]
+     */
+    private function resolveImageField(
+        ?string $rawPath,
+        string  $idno,
+        string  $folder,
+        string  $suffix
+    ): array {
+        if (empty($rawPath)) {
+            return [null, null, null];
+        }
+
+        // Normalise separators for Windows
+        $normalizedPath = str_replace('/', DIRECTORY_SEPARATOR, $rawPath);
+
+        // Attempt to read the file from the server's filesystem
+        if (
+            file_exists($normalizedPath)
+            && is_readable($normalizedPath)
+            && is_file($normalizedPath)
+        ) {
+            // Validate file size (max 20 MB for imports)
+            $size = filesize($normalizedPath);
+            if ($size === false || $size > 20 * 1024 * 1024) {
+                Log::warning("IdRecordImport: image too large, storing as network reference: {$rawPath}");
+                return [IdRecord::SOURCE_NETWORK, $rawPath, null];
+            }
+
+            // Validate MIME type
+            $mime = @mime_content_type($normalizedPath);
+            if ($mime === false || ! in_array($mime, self::ALLOWED_MIME, true)) {
+                Log::warning("IdRecordImport: unsupported MIME ({$mime}), storing as network reference: {$rawPath}");
+                return [IdRecord::SOURCE_NETWORK, $rawPath, null];
+            }
+
+            // Generate safe filename and copy into public storage
+            $ext        = strtolower(pathinfo($normalizedPath, PATHINFO_EXTENSION)) ?: 'png';
+            $safeId     = preg_replace('/[^a-zA-Z0-9_-]/', '_', $idno);
+            $random     = Str::random(6);
+            $filename   = "{$safeId}{$suffix}_{$random}.{$ext}";
+            $subDir     = now()->format('Y/m');
+            $storagePath = "{$folder}/{$subDir}/{$filename}";
+
+            try {
+                $contents = file_get_contents($normalizedPath);
+                if ($contents === false) {
+                    throw new \RuntimeException('file_get_contents returned false');
+                }
+                Storage::disk('public')->put($storagePath, $contents);
+                Log::info("IdRecordImport: copied image to storage: {$storagePath}");
+                return [IdRecord::SOURCE_UPLOAD, null, $storagePath];
+            } catch (\Throwable $e) {
+                Log::warning("IdRecordImport: failed to copy image ({$e->getMessage()}), storing as network reference: {$rawPath}");
+                return [IdRecord::SOURCE_NETWORK, $rawPath, null];
+            }
+        }
+
+        // File not accessible from server — store path as a network reference
+        return [IdRecord::SOURCE_NETWORK, $rawPath, null];
     }
 
     // ── Date parser ────────────────────────────────────────────────────────────

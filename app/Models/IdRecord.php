@@ -86,11 +86,13 @@ class IdRecord extends Model
 
     /**
      * Returns the public URL for an uploaded image, or null for network images.
+     * Uses the current request host so the URL works from any LAN client —
+     * not locked to APP_URL or a specific IP address.
      */
     public function getImageUploadUrl(): ?string
     {
         if ($this->image_source === self::SOURCE_UPLOAD && filled($this->image_upload_path)) {
-            return Storage::disk('public')->url($this->image_upload_path);
+            return $this->buildStorageUrl($this->image_upload_path);
         }
         return null;
     }
@@ -98,9 +100,31 @@ class IdRecord extends Model
     public function getSignatureUploadUrl(): ?string
     {
         if ($this->signature_source === self::SOURCE_UPLOAD && filled($this->signature_upload_path)) {
-            return Storage::disk('public')->url($this->signature_upload_path);
+            return $this->buildStorageUrl($this->signature_upload_path);
         }
         return null;
+    }
+
+    /**
+     * Build a host-independent storage URL using the current request's base URL.
+     * Falls back to APP_URL when running in CLI (artisan commands, tests).
+     */
+    private function buildStorageUrl(string $relativePath): string
+    {
+        $base = app()->runningInConsole()
+            ? rtrim(config('app.url', 'http://localhost'), '/')
+            : request()->getSchemeAndHttpHost() . '/' . ltrim(config('app.url_path', ''), '/');
+
+        // Determine the sub-path after the domain for the current deployment.
+        // e.g. APP_URL = http://host/id-tracker/public → sub-path = /id-tracker/public
+        $appUrl    = rtrim(env('APP_URL', ''), '/');
+        $parsedPath = parse_url($appUrl, PHP_URL_PATH) ?? '';
+
+        if (! app()->runningInConsole()) {
+            $base = request()->getSchemeAndHttpHost() . $parsedPath;
+        }
+
+        return rtrim($base, '/') . '/storage/' . ltrim($relativePath, '/');
     }
 
     // ── Accessors ──────────────────────────────────────────────────────────────
