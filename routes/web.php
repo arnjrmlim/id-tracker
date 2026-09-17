@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\BulkImageDownloadController;
 use App\Http\Controllers\IdRecordImageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
@@ -52,6 +53,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('export', [ExportController::class, 'index'])->name('exports.index');
     Route::post('export/template', [ExportController::class, 'exportTemplate'])->name('exports.template');
     Route::post('export/report', [ExportController::class, 'exportReport'])->name('exports.report');
+
+    // Bulk image download (ZIP)
+    Route::post('id-records/bulk-download-images',           [BulkImageDownloadController::class, 'download'])->name('id-records.bulk-download-images');
+    Route::post('id-records/bulk-download-signature-images', [BulkImageDownloadController::class, 'downloadSignatures'])->name('id-records.bulk-download-signature-images');
 
     // User management (admin only via policy)
     Route::resource('users', UserController::class);

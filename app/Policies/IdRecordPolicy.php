@@ -110,4 +110,22 @@ class IdRecordPolicy
     {
         return $user->isIdStaff();
     }
+
+    /**
+     * BULK DOWNLOAD IMAGES: Administrator + ID Staff.
+     * Regular User cannot bulk-download images.
+     */
+    public function downloadImages(User $user): bool
+    {
+        return $user->isIdStaff();
+    }
+
+    /**
+     * BULK DOWNLOAD SIGNATURE IMAGES: Administrator + ID Staff.
+     * Regular User cannot bulk-download signature images.
+     */
+    public function downloadSignatureImages(User $user): bool
+    {
+        return $user->isIdStaff();
+    }
 }

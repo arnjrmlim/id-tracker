@@ -74,8 +74,8 @@
                         {{-- Network / local path ── streamed via controller --}}
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <span class="badge bg-secondary"><i class="bi bi-hdd-network me-1"></i>Network Path</span>
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-0"
-                                    onclick="navigator.clipboard.writeText('{{ addslashes($idRecord->image_path) }}').then(()=>this.textContent='Copied!').catch(()=>{})"
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 copy-path-btn"
+                                    data-path="{{ addslashes($idRecord->image_path) }}"
                                     title="Copy path to clipboard">
                                 <i class="bi bi-clipboard me-1"></i>Copy Path
                             </button>
@@ -125,8 +125,8 @@
                     @elseif($idRecord->signature_source === 'network' && $idRecord->signature_path)
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <span class="badge bg-secondary"><i class="bi bi-hdd-network me-1"></i>Network Path</span>
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-0"
-                                    onclick="navigator.clipboard.writeText('{{ addslashes($idRecord->signature_path) }}').then(()=>this.textContent='Copied!').catch(()=>{})"
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 copy-path-btn"
+                                    data-path="{{ addslashes($idRecord->signature_path) }}"
                                     title="Copy path to clipboard">
                                 <i class="bi bi-clipboard me-1"></i>Copy Path
                             </button>
@@ -309,6 +309,53 @@
     const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
     document.getElementById('delete-btn')?.addEventListener('click', () => deleteModal.show());
     @endcan
+
+    // ── Copy Path — works on HTTP (LAN) and HTTPS ─────────────────────────────
+    // navigator.clipboard requires a secure context (HTTPS / localhost).
+    // When accessed over plain HTTP on the local network, fall back to the
+    // legacy execCommand('copy') approach via a temporary textarea.
+    function copyPathToClipboard(btn) {
+        const path = btn.dataset.path;
+        const originalHtml = btn.innerHTML;
+
+        function markSuccess() {
+            btn.innerHTML = '<i class="bi bi-clipboard-check me-1"></i>Copied!';
+            setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
+        }
+
+        function markFailure() {
+            btn.innerHTML = '<i class="bi bi-clipboard-x me-1"></i>Failed';
+            setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
+        }
+
+        // Try the modern Clipboard API first (HTTPS / localhost)
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(path).then(markSuccess).catch(() => {
+                legacyCopy(path) ? markSuccess() : markFailure();
+            });
+            return;
+        }
+
+        // Fallback for plain HTTP (LAN access)
+        legacyCopy(path) ? markSuccess() : markFailure();
+    }
+
+    function legacyCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (_) {}
+        document.body.removeChild(ta);
+        return ok;
+    }
+
+    document.querySelectorAll('.copy-path-btn').forEach(btn => {
+        btn.addEventListener('click', () => copyPathToClipboard(btn));
+    });
 </script>
 @endpush
 @endsection
