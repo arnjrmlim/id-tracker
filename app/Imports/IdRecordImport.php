@@ -128,14 +128,24 @@ class IdRecordImport implements ToCollection, WithHeadingRow
         $imgSource  = filled($imgPath)  ? IdRecord::SOURCE_NETWORK : null;
         $signSource = filled($signPath) ? IdRecord::SOURCE_NETWORK : null;
 
-        $existing = IdRecord::where('id_number', $idno)->first();
+        $existing = IdRecord::withTrashed()->where('id_number', $idno)->first();
 
         if ($existing) {
-            if ($this->mode === 'add') {
-                // Business-rule skip — not a failure.
+            // A soft-deleted record counts as "existing" for the unique
+            // constraint, so we must handle it here rather than letting
+            // the INSERT blow up with a duplicate-key error.
+            $wasTrashed = $existing->trashed();
+
+            if ($this->mode === 'add' && ! $wasTrashed) {
+                // Active record already exists — skip per add-only rule.
                 $this->skipped++;
                 $this->skippedMessages[] = "Row {$rowNum}: Existing IDNO {$idno} skipped.";
                 return;
+            }
+
+            // Restore soft-deleted record before updating.
+            if ($wasTrashed) {
+                $existing->restore();
             }
 
             // UPDATE — never change status, never touch uploaded files.
