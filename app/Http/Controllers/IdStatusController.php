@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\IdStatus;
 use App\Http\Requests\BulkChangeStatusRequest;
 use App\Http\Requests\ChangeStatusRequest;
 use App\Models\IdRecord;
@@ -15,7 +14,6 @@ class IdStatusController extends Controller
 
     /**
      * PATCH /id-records/{id_record}/status
-     * Admin-only endpoint — returns 403 for regular users.
      */
     public function update(ChangeStatusRequest $request, IdRecord $idRecord)
     {
@@ -26,6 +24,7 @@ class IdStatusController extends Controller
             $request->validated('status'),
             auth()->user(),
             $request->validated('remarks'),
+            $request->validated('effective_status_date'),
         );
 
         if ($request->expectsJson()) {
@@ -42,7 +41,6 @@ class IdStatusController extends Controller
 
     /**
      * POST /id-records/bulk-status
-     * Admin-only bulk update.
      */
     public function bulkUpdate(BulkChangeStatusRequest $request)
     {
@@ -53,6 +51,7 @@ class IdStatusController extends Controller
             $request->validated('status'),
             auth()->user(),
             $request->validated('remarks'),
+            $request->validated('effective_status_date'),
         );
 
         return redirect()->route('id-records.index')

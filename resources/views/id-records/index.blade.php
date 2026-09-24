@@ -16,20 +16,6 @@
 
 @section('content')
 
-{{-- Flash messages (error from export redirect-back) --}}
-@if(session('error'))
-<div class="alert alert-danger alert-dismissible fade show" role="alert">
-    <i class="bi bi-exclamation-circle me-2"></i>{{ session('error') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-@endif
-@if(session('success'))
-<div class="alert alert-success alert-dismissible fade show" role="alert">
-    <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-@endif
-
 {{-- Filters --}}
 <form method="GET" action="{{ route('id-records.index') }}" id="filter-form">
 <div class="filters-bar">
@@ -47,6 +33,15 @@
                 <option value="">All Statuses</option>
                 @foreach($statuses as $s)
                 <option value="{{ $s->value }}" {{ request('status') === $s->value ? 'selected' : '' }}>{{ $s->value }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small fw-semibold mb-1">Employment Type</label>
+            <select name="employment_type" class="form-select form-select-sm">
+                <option value="">All Types</option>
+                @foreach(\App\Models\IdRecord::EMPLOYMENT_TYPES as $type)
+                <option value="{{ $type }}" {{ request('employment_type') === $type ? 'selected' : '' }}>{{ $type }}</option>
                 @endforeach
             </select>
         </div>
@@ -79,11 +74,12 @@
 <form method="POST" action="{{ route('exports.template') }}" id="export-template-form">
     @csrf
     <input type="hidden" name="select_all" id="export-select-all" value="0">
-    <input type="hidden" name="search"     value="{{ request('search') }}">
-    <input type="hidden" name="status"     value="{{ request('status') }}">
-    <input type="hidden" name="position"   value="{{ request('position') }}">
-    <input type="hidden" name="date_from"  value="{{ request('date_from') }}">
-    <input type="hidden" name="date_to"    value="{{ request('date_to') }}">
+    <input type="hidden" name="search"          value="{{ request('search') }}">
+    <input type="hidden" name="status"          value="{{ request('status') }}">
+    <input type="hidden" name="employment_type" value="{{ request('employment_type') }}">
+    <input type="hidden" name="position"        value="{{ request('position') }}">
+    <input type="hidden" name="date_from"       value="{{ request('date_from') }}">
+    <input type="hidden" name="date_to"         value="{{ request('date_to') }}">
     <div id="export-ids-container"></div>
 </form>
 @endcan
@@ -93,11 +89,12 @@
 <form method="POST" action="{{ route('id-records.bulk-download-images') }}" id="bulk-images-form">
     @csrf
     <input type="hidden" name="select_all" id="images-select-all" value="0">
-    <input type="hidden" name="search"     value="{{ request('search') }}">
-    <input type="hidden" name="status"     value="{{ request('status') }}">
-    <input type="hidden" name="position"   value="{{ request('position') }}">
-    <input type="hidden" name="date_from"  value="{{ request('date_from') }}">
-    <input type="hidden" name="date_to"    value="{{ request('date_to') }}">
+    <input type="hidden" name="search"          value="{{ request('search') }}">
+    <input type="hidden" name="status"          value="{{ request('status') }}">
+    <input type="hidden" name="employment_type" value="{{ request('employment_type') }}">
+    <input type="hidden" name="position"        value="{{ request('position') }}">
+    <input type="hidden" name="date_from"       value="{{ request('date_from') }}">
+    <input type="hidden" name="date_to"         value="{{ request('date_to') }}">
     <div id="images-ids-container"></div>
 </form>
 @endcan
@@ -107,11 +104,12 @@
 <form method="POST" action="{{ route('id-records.bulk-download-signature-images') }}" id="bulk-signatures-form">
     @csrf
     <input type="hidden" name="select_all" id="signatures-select-all" value="0">
-    <input type="hidden" name="search"     value="{{ request('search') }}">
-    <input type="hidden" name="status"     value="{{ request('status') }}">
-    <input type="hidden" name="position"   value="{{ request('position') }}">
-    <input type="hidden" name="date_from"  value="{{ request('date_from') }}">
-    <input type="hidden" name="date_to"    value="{{ request('date_to') }}">
+    <input type="hidden" name="search"          value="{{ request('search') }}">
+    <input type="hidden" name="status"          value="{{ request('status') }}">
+    <input type="hidden" name="employment_type" value="{{ request('employment_type') }}">
+    <input type="hidden" name="position"        value="{{ request('position') }}">
+    <input type="hidden" name="date_from"       value="{{ request('date_from') }}">
+    <input type="hidden" name="date_to"         value="{{ request('date_to') }}">
     <div id="signatures-ids-container"></div>
 </form>
 @endcan
@@ -199,11 +197,12 @@
                     @endphp
 
                     @foreach([
-                        ['id_number', 'ID No'],
-                        ['name',      'Name'],
-                        ['position',  'Position'],
-                        ['date_hired','Date Hired'],
-                        ['status',    'Status'],
+                        ['id_number',       'ID No'],
+                        ['name',            'Name'],
+                        ['position',        'Position'],
+                        ['employment_type', 'Emp. Type'],
+                        ['date_hired',      'Date Hired'],
+                        ['status',          'Status'],
                     ] as [$col, $label])
                     <th>
                         <a href="{{ request()->fullUrlWithQuery(['sort_by' => $col, 'sort_dir' => $sortBy === $col ? $toggleDir : 'asc']) }}"
@@ -235,6 +234,15 @@
                         <div class="fw-semibold">{{ $record->name }}</div>
                     </td>
                     <td>{{ $record->position }}</td>
+                    <td>
+                        @if($record->employment_type)
+                            <span class="badge {{ $record->employment_type === 'Agent' ? 'bg-info text-dark' : 'bg-primary' }}">
+                                {{ $record->employment_type }}
+                            </span>
+                        @else
+                            <span class="text-muted small">—</span>
+                        @endif
+                    </td>
                     <td>{{ $record->date_hired_formatted }}</td>
                     <td>@include('partials.status-badge', ['status' => $record->status])</td>
                     <td>
@@ -366,6 +374,18 @@
                         <textarea name="remarks" id="modal-remarks" class="form-control" rows="3"
                                   placeholder="Optional notes…"></textarea>
                     </div>
+                    <div class="mt-3">
+                        <label for="modal-effective-date" class="form-label fw-semibold">
+                            Effective Status Date
+                        </label>
+                        <input type="date" name="effective_status_date" id="modal-effective-date"
+                               class="form-control">
+                        <div class="form-text">
+                            <i class="bi bi-info-circle me-1"></i>
+                            The date when this status should officially take effect.
+                            Use this when recording a status change after the actual effective date.
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -410,6 +430,17 @@
                         <label for="bulk-remarks" class="form-label fw-semibold">Remarks</label>
                         <textarea name="remarks" id="bulk-remarks" class="form-control" rows="3"
                                   placeholder="Optional notes for all selected records…"></textarea>
+                    </div>
+                    <div class="mt-3">
+                        <label for="bulk-effective-date" class="form-label fw-semibold">
+                            Effective Status Date
+                        </label>
+                        <input type="date" name="effective_status_date" id="bulk-effective-date"
+                               class="form-control">
+                        <div class="form-text">
+                            <i class="bi bi-info-circle me-1"></i>
+                            The date when this status should officially take effect for all selected records.
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -843,6 +874,8 @@
                 inp.value = cb.value;
                 container.appendChild(inp);
             });
+            // Pre-fill Effective Status Date with today's date
+            document.getElementById('bulk-effective-date').value = new Date().toISOString().split('T')[0];
             bulkModal.show();
         });
     }
@@ -856,6 +889,7 @@
                 `<span class="badge bg-secondary badge-status">${btn.dataset.currentStatus}</span>`;
             document.getElementById('modal-new-status').value         = btn.dataset.currentStatus;
             document.getElementById('modal-remarks').value            = '';
+            document.getElementById('modal-effective-date').value     = new Date().toISOString().split('T')[0];
             document.getElementById('status-form').action             =
                 `{{ rtrim(url('id-records'), '/') }}/${id}/status`;
             statusModal.show();

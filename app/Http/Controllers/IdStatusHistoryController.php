@@ -43,6 +43,14 @@ class IdStatusHistoryController extends Controller
             $query->whereDate('created_at', '<=', $dateTo);
         }
 
+        if ($effFrom = $request->input('eff_date_from')) {
+            $query->whereDate('effective_status_date', '>=', $effFrom);
+        }
+
+        if ($effTo = $request->input('eff_date_to')) {
+            $query->whereDate('effective_status_date', '<=', $effTo);
+        }
+
         $histories = $query->paginate(30)->withQueryString();
         $statuses  = IdStatus::cases();
         // Only show admin filter to admins — ID Staff sees the full list but can't filter by changer

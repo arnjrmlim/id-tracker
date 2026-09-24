@@ -12,7 +12,7 @@ class IdRecordTemplateExport implements FromArray, WithHeadings, WithStyles, Sho
 {
     public function headings(): array
     {
-        return ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN'];
+        return ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN', 'EMPLOYMENT TYPE'];
     }
 
     public function array(): array
@@ -28,6 +28,7 @@ class IdRecordTemplateExport implements FromArray, WithHeadings, WithStyles, Sho
                 'Maria Cruz: 09171234567',
                 'Z:\path\to\id_image.png',
                 'Z:\path\to\signature.png',
+                'Employee',
             ],
         ];
     }

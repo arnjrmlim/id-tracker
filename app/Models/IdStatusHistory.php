@@ -14,13 +14,15 @@ class IdStatusHistory extends Model
         'new_status',
         'changed_by',
         'remarks',
+        'effective_status_date',
     ];
 
     protected function casts(): array
     {
         return [
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
+            'created_at'            => 'datetime',
+            'updated_at'            => 'datetime',
+            'effective_status_date' => 'date',
         ];
     }
 

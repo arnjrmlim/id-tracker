@@ -30,13 +30,27 @@
     </div>
 
     {{-- ── Position / Date Hired ── --}}
-    <div class="col-md-8">
+    <div class="col-md-6">
         <label for="position" class="form-label fw-semibold">Position</label>
         <input type="text" id="position" name="position"
                class="form-control @error('position') is-invalid @enderror"
                value="{{ old('position', $rec->position ?? '') }}"
                placeholder="e.g. Admin Assistant">
         @error('position') <div class="invalid-feedback">{{ $message }}</div> @enderror
+    </div>
+
+    <div class="col-md-6">
+        <label for="employment_type" class="form-label fw-semibold">Employment Type</label>
+        <select id="employment_type" name="employment_type"
+                class="form-select @error('employment_type') is-invalid @enderror">
+            <option value="">Select Employment Type</option>
+            @foreach(\App\Models\IdRecord::EMPLOYMENT_TYPES as $type)
+            <option value="{{ $type }}" {{ old('employment_type', $rec->employment_type ?? '') === $type ? 'selected' : '' }}>
+                {{ $type }}
+            </option>
+            @endforeach
+        </select>
+        @error('employment_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
 
     <div class="col-md-4">

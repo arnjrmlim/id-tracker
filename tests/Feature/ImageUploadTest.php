@@ -200,9 +200,9 @@ class ImageUploadTest extends TestCase
 
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->fromArray([['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN']], null, 'A1');
+        $sheet->fromArray([['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN', 'EMPLOYMENT TYPE']], null, 'A1');
         $sheet->fromArray([['Excel Employee', 'Staff', '999005', '', '', '',
-            'Z:\\net\\excel_img.png', 'Z:\\net\\excel_sig.png']], null, 'A2');
+            'Z:\\net\\excel_img.png', 'Z:\\net\\excel_sig.png', 'Employee']], null, 'A2');
         $tmp = tempnam(sys_get_temp_dir(), 'exc_') . '.xlsx';
         (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save($tmp);
         $file = new UploadedFile($tmp, 'test.xlsx', null, null, true);
@@ -225,8 +225,8 @@ class ImageUploadTest extends TestCase
 
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->fromArray([['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN']], null, 'A1');
-        $sheet->fromArray([['Blank Img Employee', '', '999006', '', '', '', '', '']], null, 'A2');
+        $sheet->fromArray([['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN', 'EMPLOYMENT TYPE']], null, 'A1');
+        $sheet->fromArray([['Blank Img Employee', '', '999006', '', '', '', '', '', 'Employee']], null, 'A2');
         $tmp = tempnam(sys_get_temp_dir(), 'exc_') . '.xlsx';
         (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save($tmp);
         $file = new UploadedFile($tmp, 'test.xlsx', null, null, true);
@@ -575,3 +575,5 @@ class ImageUploadTest extends TestCase
         $this->assertTrue(true);
     }
 }
+
+

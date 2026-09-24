@@ -10,15 +10,22 @@ class ChangeStatusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Policy check done in controller; here we ensure user is admin at the request level too
         return $this->user()?->isAdmin() ?? false;
     }
 
     public function rules(): array
     {
         return [
-            'status'  => ['required', 'string', Rule::in(IdStatus::values())],
-            'remarks' => ['nullable', 'string', 'max:1000'],
+            'status'                => ['required', 'string', Rule::in(IdStatus::values())],
+            'remarks'               => ['nullable', 'string', 'max:1000'],
+            'effective_status_date' => ['nullable', 'date'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'effective_status_date.date' => 'Effective Status Date must be a valid date.',
         ];
     }
 }

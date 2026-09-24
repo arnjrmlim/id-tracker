@@ -28,14 +28,15 @@ class ExportController extends Controller
         $this->authorize('export', IdRecord::class);
 
         $request->validate([
-            'ids'       => ['nullable', 'array'],
-            'ids.*'     => ['integer', 'min:1'],
-            'select_all'=> ['nullable', 'boolean'],
-            'status'    => ['nullable', 'string', 'max:100'],
-            'search'    => ['nullable', 'string', 'max:255'],
-            'position'  => ['nullable', 'string', 'max:255'],
-            'date_from' => ['nullable', 'date'],
-            'date_to'   => ['nullable', 'date'],
+            'ids'             => ['nullable', 'array'],
+            'ids.*'           => ['integer', 'min:1'],
+            'select_all'      => ['nullable', 'boolean'],
+            'status'          => ['nullable', 'string', 'max:100'],
+            'employment_type' => ['nullable', 'string', 'max:20'],
+            'search'          => ['nullable', 'string', 'max:255'],
+            'position'        => ['nullable', 'string', 'max:255'],
+            'date_from'       => ['nullable', 'date'],
+            'date_to'         => ['nullable', 'date'],
         ]);
 
         $ids = $this->resolveIds($request);
@@ -46,10 +47,11 @@ class ExportController extends Controller
         }
 
         $export = new IdRecordExport(
-            includeStatus: false,
-            status:        $ids ? null : $request->input('status'),   // filter only used in standalone mode
-            ids:           $ids ?: null,
-            search:        $ids ? null : $request->input('search'),
+            includeStatus:  false,
+            status:         $ids ? null : $request->input('status'),
+            employmentType: $ids ? null : $request->input('employment_type'),
+            ids:            $ids ?: null,
+            search:         $ids ? null : $request->input('search'),
         );
 
         $filename = 'id_records_' . now()->format('Ymd_His') . '.xlsx';
@@ -64,14 +66,15 @@ class ExportController extends Controller
         $this->authorize('export', IdRecord::class);
 
         $request->validate([
-            'ids'       => ['nullable', 'array'],
-            'ids.*'     => ['integer', 'min:1'],
-            'select_all'=> ['nullable', 'boolean'],
-            'status'    => ['nullable', 'string', 'max:100'],
-            'search'    => ['nullable', 'string', 'max:255'],
-            'position'  => ['nullable', 'string', 'max:255'],
-            'date_from' => ['nullable', 'date'],
-            'date_to'   => ['nullable', 'date'],
+            'ids'             => ['nullable', 'array'],
+            'ids.*'           => ['integer', 'min:1'],
+            'select_all'      => ['nullable', 'boolean'],
+            'status'          => ['nullable', 'string', 'max:100'],
+            'employment_type' => ['nullable', 'string', 'max:20'],
+            'search'          => ['nullable', 'string', 'max:255'],
+            'position'        => ['nullable', 'string', 'max:255'],
+            'date_from'       => ['nullable', 'date'],
+            'date_to'         => ['nullable', 'date'],
         ]);
 
         $ids = $this->resolveIds($request);
@@ -81,10 +84,11 @@ class ExportController extends Controller
         }
 
         $export = new IdRecordExport(
-            includeStatus: true,
-            status:        $ids ? null : $request->input('status'),
-            ids:           $ids ?: null,
-            search:        $ids ? null : $request->input('search'),
+            includeStatus:  true,
+            status:         $ids ? null : $request->input('status'),
+            employmentType: $ids ? null : $request->input('employment_type'),
+            ids:            $ids ?: null,
+            search:         $ids ? null : $request->input('search'),
         );
 
         $filename = 'id_tracker_report_' . now()->format('Ymd_His') . '.xlsx';
@@ -108,6 +112,7 @@ class ExportController extends Controller
             return IdRecord::query()
                 ->search($request->input('search'))
                 ->filterStatus($request->input('status'))
+                ->filterEmploymentType($request->input('employment_type'))
                 ->filterPosition($request->input('position'))
                 ->filterDateHiredFrom($request->input('date_from'))
                 ->filterDateHiredTo($request->input('date_to'))

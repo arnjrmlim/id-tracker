@@ -206,7 +206,8 @@
                 <table class="table table-sm align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Date / Time</th>
+                            <th>Status Changed Date</th>
+                            <th>Effective Status Date</th>
                             <th>Old Status</th>
                             <th>New Status</th>
                             <th>Changed By</th>
@@ -216,7 +217,18 @@
                     <tbody>
                         @foreach($idRecord->statusHistories as $h)
                         <tr>
-                            <td class="text-nowrap small text-muted">{{ $h->created_at->format('m/d/Y g:i A') }}</td>
+                            <td class="text-nowrap small text-muted">
+                                {{ $h->created_at->format('m/d/Y g:i A') }}
+                            </td>
+                            <td class="text-nowrap small">
+                                @if($h->effective_status_date)
+                                    <span class="{{ $h->effective_status_date->lt($h->created_at->startOfDay()) ? 'text-warning fw-semibold' : 'text-muted' }}">
+                                        {{ $h->effective_status_date->format('m/d/Y') }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td>@include('partials.status-badge', ['status' => $h->old_status])</td>
                             <td>@include('partials.status-badge', ['status' => $h->new_status])</td>
                             <td class="small">{{ $h->changedBy?->name ?? '—' }}</td>
@@ -259,6 +271,19 @@
                     <div>
                         <label for="remarks" class="form-label fw-semibold">Remarks</label>
                         <textarea name="remarks" id="remarks" class="form-control" rows="3" placeholder="Optional notes about this status change…"></textarea>
+                    </div>
+                    <div class="mt-3">
+                        <label for="effective_status_date" class="form-label fw-semibold">
+                            Effective Status Date
+                        </label>
+                        <input type="date" name="effective_status_date" id="effective_status_date"
+                               class="form-control"
+                               value="{{ date('Y-m-d') }}">
+                        <div class="form-text">
+                            <i class="bi bi-info-circle me-1"></i>
+                            The date when this status should officially take effect.
+                            Use this when recording a status change after the actual effective date.
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">

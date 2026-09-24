@@ -21,12 +21,13 @@ class IdRecordController extends Controller
             ->search($request->input('search'))
             ->filterStatus($request->input('status'))
             ->filterPosition($request->input('position'))
+            ->filterEmploymentType($request->input('employment_type'))
             ->filterDateHiredFrom($request->input('date_from'))
             ->filterDateHiredTo($request->input('date_to'));
 
         $sortBy  = $request->input('sort_by', 'name');
         $sortDir = $request->input('sort_dir', 'asc');
-        if (in_array($sortBy, ['name', 'id_number', 'position', 'date_hired', 'status', 'created_at'])) {
+        if (in_array($sortBy, ['name', 'id_number', 'position', 'employment_type', 'date_hired', 'status', 'created_at'])) {
             $query->orderBy($sortBy, $sortDir === 'desc' ? 'desc' : 'asc');
         }
 

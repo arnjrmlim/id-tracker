@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login — {{ config('app.name') }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
@@ -16,7 +17,7 @@
 <body>
     <div class="login-card card">
         <div class="login-header">
-            <i class="bi bi-person-badge-fill mb-2 d-block"></i>
+            <img src="{{ asset('images/logo.png') }}" alt="Logo" style="height:120px; object-fit:contain;" class="mb-2 d-block mx-auto">
             <h4 class="mb-0 fw-bold">ID Tracker</h4>
             <small class="opacity-75">Employee ID Management System</small>
         </div>

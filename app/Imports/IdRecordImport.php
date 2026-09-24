@@ -12,13 +12,16 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class IdRecordImport implements ToCollection, WithHeadingRow
 {
-    public const REQUIRED_HEADERS = ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN'];
+    public const REQUIRED_HEADERS = ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN', 'EMPLOYMENT TYPE'];
 
     /**
      * The columns checked when deciding whether a row is completely empty.
-     * A row where ALL of these are blank/whitespace is silently skipped.
+     * Keys are the uppercase+underscore versions that WithHeadingRow+normalizeRow produce.
      */
-    private const DATA_COLUMNS = ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN'];
+    private const DATA_COLUMNS = ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN', 'EMPLOYMENT_TYPE'];
+
+    /** Row key for Employment Type after WithHeadingRow + normalizeRow transforms it. */
+    private const EMP_TYPE_KEY = 'EMPLOYMENT_TYPE';
 
     private string $mode;
     private array  $errors  = [];
@@ -128,6 +131,14 @@ class IdRecordImport implements ToCollection, WithHeadingRow
         $imgSource  = filled($imgPath)  ? IdRecord::SOURCE_NETWORK : null;
         $signSource = filled($signPath) ? IdRecord::SOURCE_NETWORK : null;
 
+        // ── Employment Type ────────────────────────────────────────────────────
+        $rawType        = (string) ($row[self::EMP_TYPE_KEY] ?? '');
+        $employmentType = $this->normalizeEmploymentType($rawType, $rowNum);
+        if ($employmentType === false) {
+            // Error already added inside normalizeEmploymentType()
+            return;
+        }
+
         $existing = IdRecord::withTrashed()->where('id_number', $idno)->first();
 
         if ($existing) {
@@ -152,6 +163,7 @@ class IdRecordImport implements ToCollection, WithHeadingRow
             $updateData = [
                 'name'              => $name,
                 'position'          => ($row['POS'] ?? '') ?: null,
+                'employment_type'   => $employmentType,
                 'date_hired'        => $dateHired,
                 'birth_date'        => $birthDate,
                 'emergency_contact' => ($row['ECON'] ?? '') ?: null,
@@ -180,6 +192,7 @@ class IdRecordImport implements ToCollection, WithHeadingRow
             IdRecord::create([
                 'name'                  => $name,
                 'position'              => ($row['POS'] ?? '') ?: null,
+                'employment_type'       => $employmentType,
                 'id_number'             => $idno,
                 'date_hired'            => $dateHired,
                 'birth_date'            => $birthDate,
@@ -194,6 +207,39 @@ class IdRecordImport implements ToCollection, WithHeadingRow
             ]);
             $this->created++;
         }
+    }
+
+    // ── Employment Type normalizer ─────────────────────────────────────────────
+
+    /**
+     * Normalize a raw Excel employment type value.
+     * Accepts case-insensitive 'employee' or 'agent'.
+     * Returns the canonical value ('Employee' or 'Agent'),
+     * null when the cell is empty, or false on invalid value (error recorded).
+     *
+     * @return string|null|false
+     */
+    private function normalizeEmploymentType(string $raw, int $rowNum): string|null|false
+    {
+        if ($raw === '') {
+            $this->failed++;
+            $this->errors[] = "Row {$rowNum}: Employment Type is required.";
+            return false;
+        }
+
+        $lower = strtolower($raw);
+
+        if ($lower === 'employee') {
+            return 'Employee';
+        }
+
+        if ($lower === 'agent') {
+            return 'Agent';
+        }
+
+        $this->failed++;
+        $this->errors[] = "Row {$rowNum}: Employment Type must be Employee or Agent. Got: '{$raw}'.";
+        return false;
     }
 
     // ── Date parser ────────────────────────────────────────────────────────────

@@ -21,6 +21,7 @@ class StoreIdRecordRequest extends FormRequest
         return [
             'name'              => ['required', 'string', 'max:255'],
             'position'          => ['nullable', 'string', 'max:255'],
+            'employment_type'   => ['nullable', Rule::in(\App\Models\IdRecord::EMPLOYMENT_TYPES)],
             'id_number'         => ['required', 'string', 'max:50', 'unique:id_records,id_number'],
             'date_hired'        => ['nullable', 'date'],
             'birth_date'        => ['nullable', 'date'],
@@ -68,6 +69,7 @@ class StoreIdRecordRequest extends FormRequest
             'signature_file.required_if'=> 'Please select a signature file to upload.',
             'signature_file.mimes'      => 'Signature image must be a JPG, PNG, or WebP file.',
             'signature_file.max'        => 'Signature image must not exceed 5 MB.',
+            'employment_type.in'        => 'Employment Type must be Employee or Agent.',
         ];
     }
 }

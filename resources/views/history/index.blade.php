@@ -32,13 +32,27 @@
                     @endforeach
                 </select>
             </div>
+            {{-- Status Changed Date range --}}
             <div class="col-6 col-md-2">
-                <label class="form-label small fw-semibold mb-1">Date From</label>
+                <label class="form-label small fw-semibold mb-1">
+                    <i class="bi bi-calendar3 me-1"></i>Changed From
+                </label>
                 <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
             </div>
             <div class="col-6 col-md-2">
-                <label class="form-label small fw-semibold mb-1">Date To</label>
+                <label class="form-label small fw-semibold mb-1">Changed To</label>
                 <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
+            </div>
+            {{-- Effective Status Date range --}}
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold mb-1">
+                    <i class="bi bi-calendar-check me-1 text-warning"></i>Effective From
+                </label>
+                <input type="date" name="eff_date_from" class="form-control form-control-sm" value="{{ request('eff_date_from') }}">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold mb-1">Effective To</label>
+                <input type="date" name="eff_date_to" class="form-control form-control-sm" value="{{ request('eff_date_to') }}">
             </div>
             <div class="col-12 col-md-1 d-flex gap-1">
                 <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-funnel"></i></button>
@@ -59,7 +73,8 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Date / Time</th>
+                    <th>Status Changed Date</th>
+                    <th>Effective Status Date</th>
                     <th>Employee</th>
                     <th>ID No</th>
                     <th>Old Status</th>
@@ -71,7 +86,18 @@
             <tbody>
                 @forelse($histories as $h)
                 <tr>
-                    <td class="text-nowrap small text-muted">{{ $h->created_at->format('m/d/Y g:i A') }}</td>
+                    <td class="text-nowrap small text-muted">
+                        {{ $h->created_at->format('m/d/Y g:i A') }}
+                    </td>
+                    <td class="text-nowrap small">
+                        @if($h->effective_status_date)
+                            <span class="{{ $h->effective_status_date->lt($h->created_at->startOfDay()) ? 'text-warning fw-semibold' : 'text-muted' }}">
+                                {{ $h->effective_status_date->format('m/d/Y') }}
+                            </span>
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </td>
                     <td>
                         @if($h->idRecord)
                         <a href="{{ route('id-records.show', $h->idRecord) }}" class="text-decoration-none">
@@ -91,7 +117,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center py-5 text-muted">
+                    <td colspan="8" class="text-center py-5 text-muted">
                         <i class="bi bi-inbox fs-3 d-block mb-2"></i>No history records found.
                     </td>
                 </tr>

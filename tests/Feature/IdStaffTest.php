@@ -73,7 +73,7 @@ class IdStaffTest extends TestCase
 
     private function validHeaders(): array
     {
-        return ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN'];
+        return ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN', 'EMPLOYMENT TYPE'];
     }
 
     // ── Role helpers ───────────────────────────────────────────────────────────
@@ -326,7 +326,7 @@ class IdStaffTest extends TestCase
         $staff = $this->makeIdStaff();
         Storage::fake('local');
         $file = $this->makeExcel($this->validHeaders(), [
-            ['New Employee', 'Staff', '900001', '01/01/2023', '01/01/1990', '', '', ''],
+            ['New Employee', 'Staff', '900001', '01/01/2023', '01/01/1990', '', '', '', 'Employee'],
         ]);
         $log = app(\App\Services\IdImportService::class)->import($file, $staff, 'both');
         $this->assertEquals(1, $log->created_rows);
@@ -348,7 +348,7 @@ class IdStaffTest extends TestCase
             'status'    => IdStatus::READY->value,
         ]);
         $file = $this->makeExcel($this->validHeaders(), [
-            ['Ciara Updated Name', 'Admin', '200473', '02/28/2018', '11/03/1992', '', '', ''],
+            ['Ciara Updated Name', 'Admin', '200473', '02/28/2018', '11/03/1992', '', '', '', 'Employee'],
         ]);
         $log = app(\App\Services\IdImportService::class)->import($file, $staff, 'both');
         // Must be skipped — not updated
@@ -370,7 +370,7 @@ class IdStaffTest extends TestCase
             'status' => IdStatus::FOR_PROCESSING->value,
         ]);
         $file = $this->makeExcel($this->validHeaders(), [
-            ['Updated Name', 'Staff', '200473', '', '', '', '', ''],
+            ['Updated Name', 'Staff', '200473', '', '', '', '', '', 'Employee'],
         ]);
         // Even if 'both' or 'update' is passed, service hard-forces 'add' for ID Staff
         app(\App\Services\IdImportService::class)->import($file, $staff, 'update');
@@ -424,7 +424,7 @@ class IdStaffTest extends TestCase
             'status' => IdStatus::READY->value,
         ]);
         $file = $this->makeExcel($this->validHeaders(), [
-            ['Updated Admin Name', 'Manager', '200473', '', '', '', '', ''],
+            ['Updated Admin Name', 'Manager', '200473', '', '', '', '', '', 'Employee'],
         ]);
         $log = app(\App\Services\IdImportService::class)->import($file, $admin, 'both');
         $this->assertEquals(1, $log->updated_rows);
@@ -433,3 +433,5 @@ class IdStaffTest extends TestCase
         $this->assertEquals(IdStatus::READY->value, $record->status); // unchanged
     }
 }
+
+

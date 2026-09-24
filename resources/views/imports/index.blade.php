@@ -14,7 +14,7 @@
                 <div class="alert alert-info mb-4">
                     <h6 class="alert-heading"><i class="bi bi-info-circle me-1"></i>Before you import:</h6>
                     <ul class="mb-0 small">
-                        <li>Use the exact template with headers: <code>NAME, POS, IDNO, DATEH, BDATE, ECON, IMG, SIGN</code></li>
+                        <li>Use the exact template with headers: <code>NAME, POS, IDNO, DATEH, BDATE, ECON, IMG, SIGN, EMPLOYMENT TYPE</code></li>
                         <li>IDNO is used as the unique identifier — duplicate IDs will be updated, not duplicated.</li>
                         <li>Existing ID <strong>status will not be changed</strong> during an update import.</li>
                         <li>Date format: <code>MM/DD/YYYY</code></li>
@@ -54,7 +54,7 @@
                     <table class="table table-sm table-bordered mb-0 small">
                         <thead class="table-dark">
                             <tr>
-                                @foreach(['NAME','POS','IDNO','DATEH','BDATE','ECON','IMG','SIGN'] as $h)
+                                @foreach(['NAME','POS','IDNO','DATEH','BDATE','ECON','IMG','SIGN','EMPLOYMENT TYPE'] as $h)
                                 <th>{{ $h }}</th>
                                 @endforeach
                             </tr>
@@ -69,6 +69,7 @@
                                 <td>Maria: 09171234567</td>
                                 <td class="text-muted fst-italic">Z:\…\image.png</td>
                                 <td class="text-muted fst-italic">Z:\…\sign.png</td>
+                                <td>Employee</td>
                             </tr>
                         </tbody>
                     </table>

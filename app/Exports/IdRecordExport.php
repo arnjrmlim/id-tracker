@@ -14,10 +14,11 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class IdRecordExport implements FromQuery, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
 {
     public function __construct(
-        private readonly bool    $includeStatus = false,
-        private readonly ?string $status        = null,
-        private readonly ?array  $ids           = null,
-        private readonly ?string $search        = null,
+        private readonly bool    $includeStatus  = false,
+        private readonly ?string $status         = null,
+        private readonly ?string $employmentType = null,
+        private readonly ?array  $ids            = null,
+        private readonly ?string $search         = null,
     ) {}
 
     public function query(): Builder
@@ -32,6 +33,10 @@ class IdRecordExport implements FromQuery, WithHeadings, WithMapping, WithStyles
             $query->where('status', $this->status);
         }
 
+        if ($this->employmentType) {
+            $query->where('employment_type', $this->employmentType);
+        }
+
         if ($this->search) {
             $query->search($this->search);
         }
@@ -41,7 +46,7 @@ class IdRecordExport implements FromQuery, WithHeadings, WithMapping, WithStyles
 
     public function headings(): array
     {
-        $headers = ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN'];
+        $headers = ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN', 'EMPLOYMENT TYPE'];
 
         if ($this->includeStatus) {
             $headers[] = 'STATUS';
@@ -61,6 +66,7 @@ class IdRecordExport implements FromQuery, WithHeadings, WithMapping, WithStyles
             $record->emergency_contact,
             $record->image_path,
             $record->signature_path,
+            $record->employment_type ?? '',
         ];
 
         if ($this->includeStatus) {

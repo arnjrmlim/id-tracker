@@ -13,18 +13,19 @@ class IdStatusService
 {
     /**
      * Change the status of a single ID record.
-     * Wraps the update + history creation in a transaction.
      *
-     * @throws \Illuminate\Auth\Access\AuthorizationException
-     * @throws \Illuminate\Validation\ValidationException
+     * $effectiveStatusDate — the date the status should officially take effect.
+     *   This is separate from created_at, which always records the actual
+     *   moment the system action happened.  Null is fine (old records,
+     *   or cases where the effective date equals today).
      */
     public function changeStatus(
         IdRecord $idRecord,
         string   $newStatus,
         User     $changedBy,
-        ?string  $remarks = null
+        ?string  $remarks              = null,
+        ?string  $effectiveStatusDate  = null
     ): IdStatusHistory {
-        // Server-side authorization — never rely on UI alone
         if (! $changedBy->isAdmin()) {
             abort(403, 'Only administrators can change ID status.');
         }
@@ -33,7 +34,6 @@ class IdStatusService
             abort(403, 'Your account is deactivated.');
         }
 
-        // Validate the requested status is a known value
         $statusEnum = IdStatus::tryFrom($newStatus);
         if ($statusEnum === null) {
             throw ValidationException::withMessages([
@@ -43,32 +43,37 @@ class IdStatusService
 
         $oldStatus = $idRecord->status;
 
-        // If same status, still record it (admin may want to add a remark)
-        return DB::transaction(function () use ($idRecord, $statusEnum, $oldStatus, $changedBy, $remarks) {
+        return DB::transaction(function () use (
+            $idRecord, $statusEnum, $oldStatus,
+            $changedBy, $remarks, $effectiveStatusDate
+        ) {
             $idRecord->update(['status' => $statusEnum->value]);
 
             return IdStatusHistory::create([
-                'id_record_id' => $idRecord->id,
-                'old_status'   => $oldStatus,
-                'new_status'   => $statusEnum->value,
-                'changed_by'   => $changedBy->id,
-                'remarks'      => $remarks,
+                'id_record_id'          => $idRecord->id,
+                'old_status'            => $oldStatus,
+                'new_status'            => $statusEnum->value,
+                'changed_by'            => $changedBy->id,
+                'remarks'               => $remarks,
+                // Stored separately — does NOT overwrite created_at
+                'effective_status_date' => $effectiveStatusDate ?: null,
             ]);
         });
     }
 
     /**
-     * Bulk status change for multiple ID records.
-     * Each record gets its own history entry.
+     * Bulk status change. Each record gets its own history entry.
+     * The same effective_status_date applies to all records in the batch.
      *
-     * @param  int[]   $ids
+     * @param  int[]  $ids
      * @return array{updated: int, skipped: int}
      */
     public function bulkChangeStatus(
         array   $ids,
         string  $newStatus,
         User    $changedBy,
-        ?string $remarks = null
+        ?string $remarks             = null,
+        ?string $effectiveStatusDate = null
     ): array {
         if (! $changedBy->isAdmin()) {
             abort(403, 'Only administrators can change ID status.');
@@ -85,17 +90,21 @@ class IdStatusService
         $updated = 0;
         $skipped = 0;
 
-        DB::transaction(function () use ($records, $statusEnum, $changedBy, $remarks, &$updated, &$skipped) {
+        DB::transaction(function () use (
+            $records, $statusEnum, $changedBy,
+            $remarks, $effectiveStatusDate, &$updated, &$skipped
+        ) {
             foreach ($records as $record) {
                 $oldStatus = $record->status;
                 $record->update(['status' => $statusEnum->value]);
 
                 IdStatusHistory::create([
-                    'id_record_id' => $record->id,
-                    'old_status'   => $oldStatus,
-                    'new_status'   => $statusEnum->value,
-                    'changed_by'   => $changedBy->id,
-                    'remarks'      => $remarks,
+                    'id_record_id'          => $record->id,
+                    'old_status'            => $oldStatus,
+                    'new_status'            => $statusEnum->value,
+                    'changed_by'            => $changedBy->id,
+                    'remarks'               => $remarks,
+                    'effective_status_date' => $effectiveStatusDate ?: null,
                 ]);
                 $updated++;
             }

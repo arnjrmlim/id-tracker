@@ -41,7 +41,7 @@ class ExcelImportTest extends TestCase
 
     private function validHeaders(): array
     {
-        return ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN'];
+        return ['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN', 'EMPLOYMENT TYPE'];
     }
 
     /**
@@ -80,7 +80,9 @@ class ExcelImportTest extends TestCase
         }
 
         // Write explicitly empty rows to simulate formatted-but-blank cells.
-        $emptyRow = ['', '', '', '', '', '', '', ''];
+        // Must have 9 empty columns (matching the new header count) so the
+        // empty-row filter correctly identifies them as blank.
+        $emptyRow = ['', '', '', '', '', '', '', '', ''];
         $startRow = count($dataRows) + 2;
         for ($r = 0; $r < $blankCount; $r++) {
             $sheet->fromArray([$emptyRow], null, 'A' . ($startRow + $r));
@@ -101,7 +103,7 @@ class ExcelImportTest extends TestCase
 
         $file = $this->makeExcelFile(
             $this->validHeaders(),
-            [['Ciara Maricar M. Tan', 'Admin Assistant', '200473', '02/28/2018', '11/03/1992', 'Carlos Tan: 09174468097', '', '']]
+            [['Ciara Maricar M. Tan', 'Admin Assistant', '200473', '02/28/2018', '11/03/1992', 'Carlos Tan: 09174468097', '', '', 'Employee']]
         );
 
         $log = app(\App\Services\IdImportService::class)->import($file, $admin, 'both');
@@ -133,7 +135,7 @@ class ExcelImportTest extends TestCase
 
         $file = $this->makeExcelFile(
             $this->validHeaders(),
-            [['Ciara Updated', 'Admin Assistant', '200473', '02/28/2018', '11/03/1992', 'Carlos Tan', '', '']]
+            [['Ciara Updated', 'Admin Assistant', '200473', '02/28/2018', '11/03/1992', 'Carlos Tan', '', '', 'Employee']]
         );
 
         $log = app(\App\Services\IdImportService::class)->import($file, $admin, 'both');
@@ -151,7 +153,7 @@ class ExcelImportTest extends TestCase
 
         $file = $this->makeExcelFile(
             $this->validHeaders(),
-            [['Ciara Maricar M. Tan', 'Admin Assistant', '200473', '02/28/2018', '11/03/1992', 'Carlos Tan', '', '']]
+            [['Ciara Maricar M. Tan', 'Admin Assistant', '200473', '02/28/2018', '11/03/1992', 'Carlos Tan', '', '', 'Employee']]
         );
 
         app(\App\Services\IdImportService::class)->import($file, $admin, 'both');
@@ -166,7 +168,7 @@ class ExcelImportTest extends TestCase
     public function export_contains_exactly_eight_required_headers(): void
     {
         $export = new \App\Exports\IdRecordExport(includeStatus: false);
-        $this->assertEquals(['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN'], $export->headings());
+        $this->assertEquals(['NAME', 'POS', 'IDNO', 'DATEH', 'BDATE', 'ECON', 'IMG', 'SIGN', 'EMPLOYMENT TYPE'], $export->headings());
     }
 
     #[Test]
@@ -174,7 +176,7 @@ class ExcelImportTest extends TestCase
     {
         $export = new \App\Exports\IdRecordExport(includeStatus: true);
         $this->assertContains('STATUS', $export->headings());
-        $this->assertCount(9, $export->headings());
+        $this->assertCount(10, $export->headings());
     }
 
     #[Test]
@@ -184,7 +186,7 @@ class ExcelImportTest extends TestCase
 
         $file = $this->makeExcelFile(
             $this->validHeaders(),
-            [['Juan Dela Cruz', 'Staff', '', '01/15/2020', '05/10/1990', '', '', '']]
+            [['Juan Dela Cruz', 'Staff', '', '01/15/2020', '05/10/1990', '', '', '', 'Employee']]
         );
 
         $log = app(\App\Services\IdImportService::class)->import($file, $admin, 'both');
@@ -205,9 +207,9 @@ class ExcelImportTest extends TestCase
         $admin = $this->makeAdmin();
 
         $dataRows = [
-            ['Alice Santos',    'Staff',    '300001', '', '', '', '', ''],
-            ['Bob Reyes',       'Officer',  '300002', '', '', '', '', ''],
-            ['Charlie Dela Cruz','Engineer','300003', '', '', '', '', ''],
+            ['Alice Santos',    'Staff',    '300001', '', '', '', '', '', 'Employee'],
+            ['Bob Reyes',       'Officer',  '300002', '', '', '', '', '', 'Employee'],
+            ['Charlie Dela Cruz','Engineer','300003', '', '', '', '', '', 'Employee'],
         ];
 
         $file = $this->makeExcelWithTrailingBlanks($dataRows, blankCount: 936);
@@ -232,10 +234,10 @@ class ExcelImportTest extends TestCase
         $admin = $this->makeAdmin();
 
         $dataRows = [
-            ['Alice Santos', 'Staff',   '300001', '', '', '', '', ''],
-            ['Bob Reyes',    'Officer', '300002', '', '', '', '', ''],
+            ['Alice Santos', 'Staff',   '300001', '', '', '', '', '', 'Employee'],
+            ['Bob Reyes',    'Officer', '300002', '', '', '', '', '', 'Employee'],
             // one invalid row — missing IDNO
-            ['Charlie Cruz', 'Eng',     '',       '', '', '', '', ''],
+            ['Charlie Cruz', 'Eng',     '',       '', '', '', '', '', 'Employee'],
         ];
 
         $file1 = $this->makeExcelWithTrailingBlanks($dataRows, blankCount: 500);
@@ -267,7 +269,7 @@ class ExcelImportTest extends TestCase
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->fromArray([$this->validHeaders()], null, 'A1');
         // One valid row
-        $sheet->fromArray([['Real Employee', 'Staff', '400001', '', '', '', '', '']], null, 'A2');
+        $sheet->fromArray([['Real Employee', 'Staff', '400001', '', '', '', '', '', 'Employee']], null, 'A2');
         // One row of all-whitespace cells
         $sheet->fromArray([['   ', '  ', '   ', ' ', '  ', '   ', '  ', '  ']], null, 'A3');
         $tmp = tempnam(sys_get_temp_dir(), 'ws_') . '.xlsx';
@@ -293,7 +295,7 @@ class ExcelImportTest extends TestCase
 
         $file = $this->makeExcelFile(
             $this->validHeaders(),
-            [['Juan Dela Cruz', 'Staff', '', '', '', '', '', '']]
+            [['Juan Dela Cruz', 'Staff', '', '', '', '', '', '', 'Employee']]
         );
 
         $log = app(\App\Services\IdImportService::class)->import($file, $admin, 'both');
@@ -315,7 +317,7 @@ class ExcelImportTest extends TestCase
 
         $file = $this->makeExcelFile(
             $this->validHeaders(),
-            [['', 'Staff', '500001', '', '', '', '', '']]
+            [['', 'Staff', '500001', '', '', '', '', '', 'Employee']]
         );
 
         $log = app(\App\Services\IdImportService::class)->import($file, $admin, 'both');
@@ -334,7 +336,7 @@ class ExcelImportTest extends TestCase
         $staff = $this->makeIdStaff();
 
         $file = $this->makeExcelWithTrailingBlanks(
-            [['Staff Employee', 'Clerk', '600001', '', '', '', '', '']],
+            [['Staff Employee', 'Clerk', '600001', '', '', '', '', '', 'Employee']],
             blankCount: 200
         );
 
@@ -357,7 +359,7 @@ class ExcelImportTest extends TestCase
 
         $file = $this->makeExcelFile(
             $this->validHeaders(),
-            [['Existing Employee', 'Staff', '700001', '', '', '', '', '']]
+            [['Existing Employee', 'Staff', '700001', '', '', '', '', '', 'Employee']]
         );
 
         $log = app(\App\Services\IdImportService::class)->import($file, $staff, 'both');
@@ -380,9 +382,9 @@ class ExcelImportTest extends TestCase
 
         $file = $this->makeExcelWithTrailingBlanks(
             [
-                ['Alice',   'Staff', '800001', '', '', '', '', ''],
-                ['Bob',     'Mgr',   '800002', '', '', '', '', ''],
-                ['',        '',      '',       '', '', '', '', ''], // invalid partial — all blank → skipped by empty filter
+                ['Alice',   'Staff', '800001', '', '', '', '', '', 'Employee'],
+                ['Bob',     'Mgr',   '800002', '', '', '', '', '', 'Employee'],
+                ['',        '',      '',       '', '', '', '', '', ''], // all blank → filtered out by empty-row check
             ],
             blankCount: 400
         );
@@ -395,3 +397,5 @@ class ExcelImportTest extends TestCase
         $this->assertEquals(0, $preview['invalid']);
     }
 }
+
+

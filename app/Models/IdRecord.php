@@ -18,9 +18,13 @@ class IdRecord extends Model
     public const SOURCE_NETWORK = 'network';
     public const SOURCE_UPLOAD  = 'upload';
 
+    /** Valid employment type values. */
+    public const EMPLOYMENT_TYPES = ['Employee', 'Agent'];
+
     protected $fillable = [
         'name',
         'position',
+        'employment_type',
         'id_number',
         'date_hired',
         'birth_date',
@@ -154,6 +158,14 @@ class IdRecord extends Model
             return $query;
         }
         return $query->where('position', 'like', "%{$position}%");
+    }
+
+    public function scopeFilterEmploymentType($query, ?string $type)
+    {
+        if (blank($type)) {
+            return $query;
+        }
+        return $query->where('employment_type', $type);
     }
 
     public function scopeFilterDateHiredFrom($query, ?string $date)
