@@ -17,12 +17,18 @@ class StoreIdRecordRequest extends FormRequest
     public function rules(): array
     {
         $allowedSources = [IdRecord::SOURCE_NETWORK, IdRecord::SOURCE_UPLOAD];
+        $isAdmin = $this->user()?->isAdmin() ?? false;
+
+        // ID Number is required for Admin, nullable for ID Staff
+        $idNumberRules = $isAdmin
+            ? ['required', 'string', 'max:50', 'unique:id_records,id_number']
+            : ['nullable', 'string', 'max:50'];
 
         return [
             'name'              => ['required', 'string', 'max:255'],
             'position'          => ['nullable', 'string', 'max:255'],
             'employment_type'   => ['nullable', Rule::in(\App\Models\IdRecord::EMPLOYMENT_TYPES)],
-            'id_number'         => ['required', 'string', 'max:50', 'unique:id_records,id_number'],
+            'id_number'         => $idNumberRules,
             'date_hired'        => ['nullable', 'date'],
             'birth_date'        => ['nullable', 'date'],
             'emergency_contact' => ['nullable', 'string', 'max:500'],
@@ -71,5 +77,13 @@ class StoreIdRecordRequest extends FormRequest
             'signature_file.max'        => 'Signature image must not exceed 5 MB.',
             'employment_type.in'        => 'Employment Type must be Employee or Agent.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // ID Staff cannot assign ID numbers - force to null
+        if ($this->user()?->isIdStaff()) {
+            $this->merge(['id_number' => null]);
+        }
     }
 }

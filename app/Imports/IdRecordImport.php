@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Enums\IdStatus;
 use App\Models\IdRecord;
+use App\Services\NameNormalizationService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -121,6 +122,9 @@ class IdRecordImport implements ToCollection, WithHeadingRow
             $this->errors[] = "Row {$rowNum}: IDNO is required.";
             return;
         }
+
+        // Normalize full name
+        $name = (new NameNormalizationService())->normalize($name);
 
         $dateHired = $this->parseDate($row['DATEH'] ?? null, $rowNum, 'DATEH');
         $birthDate = $this->parseDate($row['BDATE'] ?? null, $rowNum, 'BDATE');

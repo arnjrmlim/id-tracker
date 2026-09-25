@@ -6,6 +6,7 @@ use App\Enums\IdStatus;
 use App\Models\IdRecord;
 use App\Models\IdStatusHistory;
 use App\Models\User;
+use App\Services\NameNormalizationService;
 use Illuminate\Database\Seeder;
 
 class IdRecordSeeder extends Seeder
@@ -13,6 +14,7 @@ class IdRecordSeeder extends Seeder
     public function run(): void
     {
         $admin = User::where('username', 'admin')->first();
+        $nameNormalizer = new NameNormalizationService();
 
         $samples = [
             [
@@ -95,6 +97,9 @@ class IdRecordSeeder extends Seeder
         ];
 
         foreach ($samples as $data) {
+            // Normalize full name for consistency
+            $data['name'] = $nameNormalizer->normalize($data['name']);
+            
             $record = IdRecord::firstOrCreate(
                 ['id_number' => $data['id_number']],
                 $data

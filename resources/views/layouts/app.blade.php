@@ -152,6 +152,30 @@
         </li>
         @endif
 
+        {{-- Pending ID Requests: admin only --}}
+        @if($u->isAdmin())
+        @php
+            $pendingCount = \App\Models\IdRecord::pendingApproval()->count();
+        @endphp
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('id-requests.*') ? 'active' : '' }}" href="{{ route('id-requests.index') }}">
+                <i class="bi bi-hourglass-split"></i> Pending Requests
+                @if($pendingCount > 0)
+                <span class="badge bg-danger ms-auto">{{ $pendingCount }}</span>
+                @endif
+            </a>
+        </li>
+        @endif
+
+        {{-- My ID Requests: id staff only --}}
+        @if($u->isIdStaff())
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('id-requests.my-requests') ? 'active' : '' }}" href="{{ route('id-requests.my-requests') }}">
+                <i class="bi bi-list-check"></i> My Requests
+            </a>
+        </li>
+        @endif
+
         {{-- Data section: admin + id_staff only --}}
         @if($u->isAdmin() || $u->isIdStaff())
         <li><span class="sidebar-section">Data</span></li>

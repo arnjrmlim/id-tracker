@@ -6,6 +6,52 @@
 <div class="row g-4">
     {{-- Main info --}}
     <div class="col-lg-8">
+        {{-- Approval Information --}}
+        @if($idRecord->request_status)
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-info-circle text-primary"></i>
+                <strong>Approval Information</strong>
+                <span class="badge {{ $idRecord->request_status_badge_class }} ms-auto">
+                    {{ $idRecord->request_status_enum ? $idRecord->request_status_enum->label() : ucfirst($idRecord->request_status) }}
+                </span>
+            </div>
+            <div class="card-body">
+                @if($idRecord->isPendingApproval())
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-hourglass-split me-2"></i>
+                    <strong>Pending Approval:</strong> This record is awaiting Admin approval.
+                    <div class="small text-muted mt-1">
+                        Requested by {{ $idRecord->requester ? $idRecord->requester->name : 'Unknown' }} on {{ $idRecord->requested_at ? $idRecord->requested_at->format('M d, Y g:i A') : '—' }}
+                    </div>
+                </div>
+                @elseif($idRecord->isApproved())
+                <div class="alert alert-success mb-0">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <strong>Approved:</strong> This record has been approved.
+                    <div class="small text-muted mt-1">
+                        Requested by {{ $idRecord->requester ? $idRecord->requester->name : 'Unknown' }} on {{ $idRecord->requested_at ? $idRecord->requested_at->format('M d, Y g:i A') : '—' }}
+                    </div>
+                    <div class="small text-muted">
+                        Approved by {{ $idRecord->approver ? $idRecord->approver->name : 'Unknown' }} on {{ $idRecord->approved_at ? $idRecord->approved_at->format('M d, Y g:i A') : '—' }}
+                    </div>
+                </div>
+                @elseif($idRecord->isRejected())
+                <div class="alert alert-danger mb-0">
+                    <i class="bi bi-x-circle me-2"></i>
+                    <strong>Rejected:</strong> {{ $idRecord->rejection_reason }}
+                    <div class="small text-muted mt-1">
+                        Requested by {{ $idRecord->requester ? $idRecord->requester->name : 'Unknown' }} on {{ $idRecord->requested_at ? $idRecord->requested_at->format('M d, Y g:i A') : '—' }}
+                    </div>
+                    <div class="small text-muted">
+                        Rejected by {{ $idRecord->rejecter ? $idRecord->rejecter->name : 'Unknown' }} on {{ $idRecord->rejected_at ? $idRecord->rejected_at->format('M d, Y g:i A') : '—' }}
+                    </div>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+
         <div class="card shadow-sm mb-4">
             <div class="card-header d-flex align-items-center gap-2">
                 <i class="bi bi-person-badge text-primary"></i>

@@ -95,6 +95,9 @@ class IdImportService
                     continue;
                 }
 
+                // Normalize name for preview display
+                $name = (new NameNormalizationService())->normalize($name);
+
                 \App\Models\IdRecord::where('id_number', $idno)->exists()
                     ? $existing++
                     : $new++;

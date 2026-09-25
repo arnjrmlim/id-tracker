@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\IdStatus;
+use App\Enums\RequestStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -38,6 +39,15 @@ class IdRecord extends Model
         'signature_source',
         'signature_upload_path',
         'status',
+        // Approval workflow
+        'request_status',
+        'requested_by',
+        'requested_at',
+        'approved_by',
+        'approved_at',
+        'rejected_by',
+        'rejected_at',
+        'rejection_reason',
     ];
 
     protected function casts(): array
@@ -45,6 +55,9 @@ class IdRecord extends Model
         return [
             'date_hired' => 'date',
             'birth_date' => 'date',
+            'requested_at' => 'datetime',
+            'approved_at' => 'datetime',
+            'rejected_at' => 'datetime',
         ];
     }
 
@@ -60,6 +73,22 @@ class IdRecord extends Model
     {
         return $this->hasOne(IdStatusHistory::class, 'id_record_id')
                     ->latestOfMany();
+    }
+
+    // Approval workflow relationships
+    public function requester()
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function rejecter()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 
     // ── Image source helpers ───────────────────────────────────────────────────
@@ -182,5 +211,63 @@ class IdRecord extends Model
             return $query;
         }
         return $query->where('date_hired', '<=', $date);
+    }
+
+    // ── Approval workflow scopes ───────────────────────────────────────────────
+
+    public function scopePendingApproval($query)
+    {
+        return $query->where('request_status', 'pending');
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('request_status', 'approved');
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('request_status', 'rejected');
+    }
+
+    public function scopeByRequester($query, ?int $userId)
+    {
+        if (blank($userId)) {
+            return $query;
+        }
+        return $query->where('requested_by', $userId);
+    }
+
+    // ── Approval workflow helpers ───────────────────────────────────────────────
+
+    public function isPendingApproval(): bool
+    {
+        return $this->request_status === 'pending';
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->request_status === 'approved';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->request_status === 'rejected';
+    }
+
+    public function needsApproval(): bool
+    {
+        return $this->request_status === null || $this->request_status === 'pending';
+    }
+
+    public function getRequestStatusEnumAttribute(): ?RequestStatus
+    {
+        return RequestStatus::tryFrom($this->request_status);
+    }
+
+    public function getRequestStatusBadgeClassAttribute(): string
+    {
+        $enum = $this->request_status_enum;
+        return $enum ? $enum->badgeClass() : 'bg-secondary';
     }
 }

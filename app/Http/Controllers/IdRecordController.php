@@ -7,6 +7,7 @@ use App\Http\Requests\StoreIdRecordRequest;
 use App\Http\Requests\UpdateIdRecordRequest;
 use App\Models\IdRecord;
 use App\Services\ImageUploadService;
+use App\Services\NameNormalizationService;
 use Illuminate\Http\Request;
 
 class IdRecordController extends Controller
@@ -24,6 +25,12 @@ class IdRecordController extends Controller
             ->filterEmploymentType($request->input('employment_type'))
             ->filterDateHiredFrom($request->input('date_from'))
             ->filterDateHiredTo($request->input('date_to'));
+
+        // Hide pending approval requests from main list (they go to pending requests page)
+        $query->where(function ($q) {
+            $q->whereNull('request_status')
+              ->orWhere('request_status', '!=', 'pending');
+        });
 
         $sortBy  = $request->input('sort_by', 'name');
         $sortDir = $request->input('sort_dir', 'asc');
@@ -50,23 +57,41 @@ class IdRecordController extends Controller
         $this->authorize('create', IdRecord::class);
 
         $data = $request->validated();
+        $user = $request->user();
+
+        // Normalize full name
+        $data['name'] = (new NameNormalizationService())->normalize($data['name']);
 
         // Always force PENDING — never trust client-supplied status
         $data['status'] = IdStatus::PENDING->value;
+
+        // Handle approval workflow based on user role
+        if ($user->isIdStaff()) {
+            // ID Staff creates pending approval request
+            $data['request_status'] = 'pending';
+            $data['requested_by'] = $user->id;
+            $data['requested_at'] = now();
+            // ID Staff cannot assign ID number - validation already forced to null
+        } else {
+            // Admin creates approved record directly
+            $data['request_status'] = 'approved';
+            $data['approved_by'] = $user->id;
+            $data['approved_at'] = now();
+        }
 
         // Handle ID image
         [$data] = $this->processImageInput(
             $data,
             $request,
             'image',
-            $request->validated('id_number', '')
+            $request->validated('id_number') ?? ''
         );
 
         // Handle signature image
         [$data] = $this->processSignatureInput(
             $data,
             $request,
-            $request->validated('id_number', '')
+            $request->validated('id_number') ?? ''
         );
 
         // Remove file upload fields — not DB columns
@@ -74,8 +99,12 @@ class IdRecordController extends Controller
 
         IdRecord::create($data);
 
+        $message = $user->isIdStaff()
+            ? 'ID record submitted for approval.'
+            : 'ID record created successfully.';
+
         return redirect()->route('id-records.index')
-            ->with('success', 'ID record created successfully.');
+            ->with('success', $message);
     }
 
     public function show(IdRecord $idRecord)
@@ -98,12 +127,15 @@ class IdRecordController extends Controller
         $data = $request->validated();
         unset($data['status']); // status is never changed via this route
 
+        // Normalize full name
+        $data['name'] = (new NameNormalizationService())->normalize($data['name']);
+
         // Handle ID image — may delete old uploaded file if replacing
         [$data] = $this->processImageInput(
             $data,
             $request,
             'image',
-            $idRecord->id_number,
+            $idRecord->id_number ?? '',
             $idRecord
         );
 
@@ -111,7 +143,7 @@ class IdRecordController extends Controller
         [$data] = $this->processSignatureInput(
             $data,
             $request,
-            $idRecord->id_number,
+            $idRecord->id_number ?? '',
             $idRecord
         );
 
@@ -168,7 +200,7 @@ class IdRecordController extends Controller
         array     $data,
         Request   $request,
         string    $prefix,        // 'image'
-        string    $idNumber,
+        ?string   $idNumber,
         ?IdRecord $existing = null
     ): array {
         $source   = $data["{$prefix}_source"] ?? null;
@@ -211,7 +243,7 @@ class IdRecordController extends Controller
     private function processSignatureInput(
         array     $data,
         Request   $request,
-        string    $idNumber,
+        ?string   $idNumber,
         ?IdRecord $existing = null
     ): array {
         return $this->processImageInput($data, $request, 'signature', $idNumber, $existing);

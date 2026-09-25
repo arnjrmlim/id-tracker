@@ -128,4 +128,33 @@ class IdRecordPolicy
     {
         return $user->isIdStaff();
     }
+
+    // ── Approval Workflow ───────────────────────────────────────────────────────
+
+    /**
+     * VIEW PENDING REQUESTS: Administrator only.
+     * Admin can view all pending approval requests.
+     */
+    public function viewPendingRequests(User $user): bool
+    {
+        return $user->isAdmin();
+    }
+
+    /**
+     * APPROVE/REJECT: Administrator only.
+     * Only admins can approve or reject ID record requests.
+     */
+    public function approve(User $user, IdRecord $idRecord): bool
+    {
+        return $user->isAdmin();
+    }
+
+    /**
+     * VIEW OWN REQUESTS: ID Staff only.
+     * ID Staff can view their own submitted requests.
+     */
+    public function viewOwnRequests(User $user): bool
+    {
+        return $user->isIdStaff();
+    }
 }

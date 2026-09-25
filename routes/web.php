@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BulkImageDownloadController;
+use App\Http\Controllers\IdRecordApprovalController;
 use App\Http\Controllers\IdRecordImageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
@@ -41,6 +42,15 @@ Route::middleware(['auth'])->group(function () {
 
     // Status history (admin only)
     Route::get('status-history', [IdStatusHistoryController::class, 'index'])->name('history.index');
+
+    // ID Record approval workflow (admin only for approve/reject)
+    Route::prefix('id-requests')->name('id-requests.')->group(function () {
+        Route::get('/', [IdRecordApprovalController::class, 'index'])->name('index');
+        Route::get('/my-requests', [IdRecordApprovalController::class, 'myRequests'])->name('my-requests');
+        Route::get('/{id_record}', [IdRecordApprovalController::class, 'show'])->name('show');
+        Route::post('/{id_record}/approve', [IdRecordApprovalController::class, 'approve'])->name('approve');
+        Route::post('/{id_record}/reject', [IdRecordApprovalController::class, 'reject'])->name('reject');
+    });
 
     // Import
     Route::get('import', [ImportController::class, 'index'])->name('imports.index');

@@ -27,11 +27,11 @@ return [
 
     // The drive letter stored in the database, without trailing backslash.
     // e.g.  Z:
-    'network_drive' => env('ID_TRACKER_NETWORK_DRIVE', 'Z:'),
+    'network_drive' => 'Z:',
 
     // The UNC root that the PHP process on the server can access directly.
     // e.g.  \\FILE-SERVER\ID-TRACKER
     // Leave empty on machines where the mapped drive already works.
-    'network_root' => env('ID_TRACKER_NETWORK_ROOT', ''),
+    'network_root' => '\\\\ims-truenas\\IMS_NAS',
 
 ];
