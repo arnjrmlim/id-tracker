@@ -126,6 +126,14 @@ class IdRecordImport implements ToCollection, WithHeadingRow
         // Normalize full name
         $name = (new NameNormalizationService())->normalize($name);
 
+        // Normalize position to title case
+        $position = (string) ($row['POS'] ?? '');
+        $position = (new NameNormalizationService())->normalizeTitleCase($position);
+
+        // Normalize emergency contact to title case
+        $emergencyContact = (string) ($row['ECON'] ?? '');
+        $emergencyContact = (new NameNormalizationService())->normalizeTitleCase($emergencyContact);
+
         $dateHired = $this->parseDate($row['DATEH'] ?? null, $rowNum, 'DATEH');
         $birthDate = $this->parseDate($row['BDATE'] ?? null, $rowNum, 'BDATE');
 
@@ -166,11 +174,11 @@ class IdRecordImport implements ToCollection, WithHeadingRow
             // UPDATE — never change status, never touch uploaded files.
             $updateData = [
                 'name'              => $name,
-                'position'          => ($row['POS'] ?? '') ?: null,
+                'position'          => $position,
                 'employment_type'   => $employmentType,
                 'date_hired'        => $dateHired,
                 'birth_date'        => $birthDate,
-                'emergency_contact' => ($row['ECON'] ?? '') ?: null,
+                'emergency_contact' => $emergencyContact,
             ];
 
             if (filled($imgPath)) {
@@ -195,12 +203,12 @@ class IdRecordImport implements ToCollection, WithHeadingRow
 
             IdRecord::create([
                 'name'                  => $name,
-                'position'              => ($row['POS'] ?? '') ?: null,
+                'position'              => $position,
                 'employment_type'       => $employmentType,
                 'id_number'             => $idno,
                 'date_hired'            => $dateHired,
                 'birth_date'            => $birthDate,
-                'emergency_contact'     => ($row['ECON'] ?? '') ?: null,
+                'emergency_contact'     => $emergencyContact,
                 'image_path'            => $imgPath,
                 'image_source'          => $imgSource,
                 'image_upload_path'     => null,

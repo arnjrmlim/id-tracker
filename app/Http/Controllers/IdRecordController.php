@@ -62,6 +62,16 @@ class IdRecordController extends Controller
         // Normalize full name
         $data['name'] = (new NameNormalizationService())->normalize($data['name']);
 
+        // Normalize position to title case
+        if (isset($data['position'])) {
+            $data['position'] = (new NameNormalizationService())->normalizeTitleCase($data['position']);
+        }
+
+        // Normalize emergency contact to title case
+        if (isset($data['emergency_contact'])) {
+            $data['emergency_contact'] = (new NameNormalizationService())->normalizeTitleCase($data['emergency_contact']);
+        }
+
         // Always force PENDING — never trust client-supplied status
         $data['status'] = IdStatus::PENDING->value;
 
@@ -129,6 +139,16 @@ class IdRecordController extends Controller
 
         // Normalize full name
         $data['name'] = (new NameNormalizationService())->normalize($data['name']);
+
+        // Normalize position to title case
+        if (isset($data['position'])) {
+            $data['position'] = (new NameNormalizationService())->normalizeTitleCase($data['position']);
+        }
+
+        // Normalize emergency contact to title case
+        if (isset($data['emergency_contact'])) {
+            $data['emergency_contact'] = (new NameNormalizationService())->normalizeTitleCase($data['emergency_contact']);
+        }
 
         // Handle ID image — may delete old uploaded file if replacing
         [$data] = $this->processImageInput(
