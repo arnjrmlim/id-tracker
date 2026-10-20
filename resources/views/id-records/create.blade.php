@@ -14,13 +14,13 @@
                 @if(auth()->user()->isIdStaff())
                 <div class="alert alert-info mb-3">
                     <i class="bi bi-info-circle me-2"></i>
-                    <strong>Submit for Approval:</strong> This ID Record will be submitted for Admin approval. The ID Number will be assigned by an Admin after approval.
+                    <strong>Submit for Approval:</strong> This ID Record will be submitted for Admin approval. Please enter the ID Number before submitting.
                 </div>
                 @endif
 
                 <form method="POST" action="{{ route('id-records.store') }}" enctype="multipart/form-data">
                     @csrf
-                    @include('id-records.partials.form', ['isIdStaff' => auth()->user()->isIdStaff()])
+                    @include('id-records.partials.form')
                     <hr>
                     <div class="d-flex gap-2 justify-content-end">
                         <a href="{{ route('id-records.index') }}" class="btn btn-secondary">Cancel</a>

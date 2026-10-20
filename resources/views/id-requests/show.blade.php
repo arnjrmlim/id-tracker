@@ -26,6 +26,10 @@
                         <div class="fw-semibold">{{ $idRecord->name }}</div>
                     </div>
                     <div class="col-md-6">
+                        <label class="form-label small text-muted">ID Number</label>
+                        <div class="fw-mono fw-bold text-primary">{{ $idRecord->id_number ?? '—' }}</div>
+                    </div>
+                    <div class="col-md-6">
                         <label class="form-label small text-muted">Position</label>
                         <div>{{ $idRecord->position ?? '—' }}</div>
                     </div>
@@ -122,7 +126,7 @@
                         <div class="alert alert-success mb-0">
                             <strong>Approved by {{ $idRecord->approver ? $idRecord->approver->name : 'Unknown' }}</strong> on {{ $idRecord->approved_at ? $idRecord->approved_at->format('M d, Y g:i A') : '—' }}
                             <div class="small text-muted mt-1">
-                                ID Number assigned: <strong>{{ $idRecord->id_number }}</strong>
+                                ID Number: <strong>{{ $idRecord->id_number }}</strong>
                             </div>
                         </div>
                     </div>
@@ -180,21 +184,12 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-3">Approving this request will assign an ID Number to <strong>{{ $idRecord->name }}</strong>.</p>
-                    <div class="mb-3">
-                        <label for="approve_id_number" class="form-label fw-semibold">
-                            ID Number <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" id="approve_id_number" name="id_number"
-                               class="form-control" required
-                               placeholder="e.g. 200473">
-                        <div class="form-text">Enter the ID Number to assign to this record.</div>
-                    </div>
+                    <p class="mb-3">Approve the ID Record request for <strong>{{ $idRecord->name }}</strong> (ID No. {{ $idRecord->id_number }})?</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-lg me-1"></i>Approve & Assign ID
+                        <i class="bi bi-check-lg me-1"></i>Approve
                     </button>
                 </div>
             </div>

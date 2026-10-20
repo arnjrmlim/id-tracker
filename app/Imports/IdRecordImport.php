@@ -32,6 +32,10 @@ class IdRecordImport implements ToCollection, WithHeadingRow
     private int    $skipped = 0;
     private int    $failed  = 0;
     private int    $total   = 0;  // meaningful (non-blank) rows only
+    private array  $createdRecords = [];  // Track names/IDs of created records
+    private array  $updatedRecords = [];  // Track names/IDs of updated records
+    private array  $failedRecords  = [];  // Track names/IDs of failed (invalid) records
+    private array  $skippedRecords = [];  // Track names/IDs of skipped records
 
     public function __construct(string $mode = 'both')
     {
@@ -59,6 +63,11 @@ class IdRecordImport implements ToCollection, WithHeadingRow
             } catch (\Throwable $e) {
                 $this->failed++;
                 $this->errors[] = "Row {$rowNum}: " . $e->getMessage();
+                $this->failedRecords[] = [
+                    'name' => trim((string) ($normalized['NAME'] ?? '')) ?: '(unknown)',
+                    'id_number' => trim((string) ($normalized['IDNO'] ?? '')) ?: '(unknown)',
+                    'error' => $e->getMessage(),
+                ];
                 Log::warning("IdRecordImport error on row {$rowNum}: " . $e->getMessage());
             }
         }
@@ -114,12 +123,22 @@ class IdRecordImport implements ToCollection, WithHeadingRow
         if ($name === '') {
             $this->failed++;
             $this->errors[] = "Row {$rowNum}: NAME is required.";
+            $this->failedRecords[] = [
+                'name' => '(unknown)',
+                'id_number' => $idno ?: '(unknown)',
+                'error' => 'NAME is required.',
+            ];
             return;
         }
 
         if ($idno === '') {
             $this->failed++;
             $this->errors[] = "Row {$rowNum}: IDNO is required.";
+            $this->failedRecords[] = [
+                'name' => $name,
+                'id_number' => '(unknown)',
+                'error' => 'IDNO is required.',
+            ];
             return;
         }
 
@@ -145,7 +164,7 @@ class IdRecordImport implements ToCollection, WithHeadingRow
 
         // ── Employment Type ────────────────────────────────────────────────────
         $rawType        = (string) ($row[self::EMP_TYPE_KEY] ?? '');
-        $employmentType = $this->normalizeEmploymentType($rawType, $rowNum);
+        $employmentType = $this->normalizeEmploymentType($rawType, $rowNum, $name, $idno);
         if ($employmentType === false) {
             // Error already added inside normalizeEmploymentType()
             return;
@@ -163,6 +182,11 @@ class IdRecordImport implements ToCollection, WithHeadingRow
                 // Active record already exists — skip per add-only rule.
                 $this->skipped++;
                 $this->skippedMessages[] = "Row {$rowNum}: Existing IDNO {$idno} skipped.";
+                $this->skippedRecords[] = [
+                    'name' => $name,
+                    'id_number' => $idno,
+                    'reason' => 'Existing IDNO skipped (add-only mode).',
+                ];
                 return;
             }
 
@@ -194,14 +218,23 @@ class IdRecordImport implements ToCollection, WithHeadingRow
 
             $existing->update($updateData);
             $this->updated++;
+            $this->updatedRecords[] = [
+                'name' => $name,
+                'id_number' => $idno,
+            ];
         } else {
             if ($this->mode === 'update') {
                 $this->skipped++;
                 $this->skippedMessages[] = "Row {$rowNum}: New IDNO {$idno} skipped (update-only mode).";
+                $this->skippedRecords[] = [
+                    'name' => $name,
+                    'id_number' => $idno,
+                    'reason' => 'New IDNO skipped (update-only mode).',
+                ];
                 return;
             }
 
-            IdRecord::create([
+            $record = IdRecord::create([
                 'name'                  => $name,
                 'position'              => $position,
                 'employment_type'       => $employmentType,
@@ -218,6 +251,10 @@ class IdRecordImport implements ToCollection, WithHeadingRow
                 'status'                => IdStatus::PENDING->value,
             ]);
             $this->created++;
+            $this->createdRecords[] = [
+                'name' => $name,
+                'id_number' => $idno,
+            ];
         }
     }
 
@@ -231,11 +268,16 @@ class IdRecordImport implements ToCollection, WithHeadingRow
      *
      * @return string|null|false
      */
-    private function normalizeEmploymentType(string $raw, int $rowNum): string|null|false
+    private function normalizeEmploymentType(string $raw, int $rowNum, string $name = '', string $idno = ''): string|null|false
     {
         if ($raw === '') {
             $this->failed++;
             $this->errors[] = "Row {$rowNum}: Employment Type is required.";
+            $this->failedRecords[] = [
+                'name' => $name ?: '(unknown)',
+                'id_number' => $idno ?: '(unknown)',
+                'error' => 'Employment Type is required.',
+            ];
             return false;
         }
 
@@ -251,6 +293,11 @@ class IdRecordImport implements ToCollection, WithHeadingRow
 
         $this->failed++;
         $this->errors[] = "Row {$rowNum}: Employment Type must be Employee or Agent. Got: '{$raw}'.";
+        $this->failedRecords[] = [
+            'name' => $name ?: '(unknown)',
+            'id_number' => $idno ?: '(unknown)',
+            'error' => "Employment Type must be Employee or Agent. Got: '{$raw}'.",
+        ];
         return false;
     }
 
@@ -302,4 +349,8 @@ class IdRecordImport implements ToCollection, WithHeadingRow
     public function getFailed(): int             { return $this->failed; }
     public function getTotal(): int              { return $this->total; }
     public function getSuccessful(): int         { return $this->created + $this->updated; }
+    public function getCreatedRecords(): array   { return $this->createdRecords; }
+    public function getUpdatedRecords(): array   { return $this->updatedRecords; }
+    public function getFailedRecords(): array    { return $this->failedRecords; }
+    public function getSkippedRecords(): array   { return $this->skippedRecords; }
 }

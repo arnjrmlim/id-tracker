@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\AuditLog;
 use App\Models\IdRecord;
 use App\Models\User;
+use App\Policies\AuditLogPolicy;
 use App\Policies\IdRecordPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Support\Facades\Gate;
@@ -15,6 +17,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::policy(AuditLog::class, AuditLogPolicy::class);
         Gate::policy(IdRecord::class, IdRecordPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
 

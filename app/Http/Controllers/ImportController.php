@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\AuditLogService;
 use App\Services\IdImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -31,7 +32,7 @@ class ImportController extends Controller
             return back()->withErrors(['excel_file' => $error])->withInput();
         }
 
-        $preview = $this->importService->preview($file);
+        $preview = $this->importService->preview($file, auth()->user());
         $tmpPath = $file->store('imports/tmp', 'local');
 
         // ID Staff is always locked to add-only mode
@@ -75,12 +76,80 @@ class ImportController extends Controller
             true
         );
 
-        // Service will also enforce add-only for ID Staff regardless
-        $log = $this->importService->import($uploadedFile, $user, $request->input('mode'));
+        // ID Staff: Create import request for approval
+        // Admin: Import directly
+        if ($user->isIdStaff()) {
+            // Create import request
+            $importRequest = $this->importService->createImportRequest($uploadedFile, $user, $request->input('mode'));
 
-        \Illuminate\Support\Facades\Storage::disk('local')->delete($tmpPath);
+            // Delete temporary file (service stores permanent copy)
+            \Illuminate\Support\Facades\Storage::disk('local')->delete($tmpPath);
 
-        return redirect()->route('imports.result', $log->id);
+            // Load rows for per-employee audit details
+            $importRequest->load('rows');
+
+            // Log audit trail
+            AuditLogService::log(
+                action: 'IMPORT_REQUEST_SUBMITTED',
+                module: 'Import Requests',
+                description: "ID Staff {$user->username} submitted Import Request #{$importRequest->id} for approval. File: {$importRequest->file_name}. Valid: {$importRequest->valid_rows}, Invalid: {$importRequest->invalid_rows}.",
+                target: $importRequest,
+                newValues: array_merge([
+                    'file_name' => $importRequest->file_name,
+                    'total_rows' => $importRequest->total_rows,
+                    'valid_rows' => $importRequest->valid_rows,
+                    'invalid_rows' => $importRequest->invalid_rows,
+                    'new_records' => $importRequest->new_records,
+                    'updates' => $importRequest->updates,
+                    'mode' => $importRequest->mode,
+                ], $importRequest->getAuditRecords())
+            );
+
+            return redirect()->route('import-requests.my-requests')
+                ->with('success', "Import request #{$importRequest->id} submitted for Administrator approval.");
+        } else {
+            // Admin: Import directly
+            $log = $this->importService->import($uploadedFile, $user, $request->input('mode'));
+
+            \Illuminate\Support\Facades\Storage::disk('local')->delete($tmpPath);
+
+            // Build description with created/updated records info
+            $description = "Imported \"{$request->input('original_name')}\". Mode: {$request->input('mode')}. Created: {$log->created_rows}, Updated: {$log->updated_rows}, Skipped: {$log->skipped_rows}, Failed: {$log->failed_rows}.";
+
+            $newValues = [
+                'filename' => $request->input('original_name'),
+                'mode' => $request->input('mode'),
+                'total_rows' => $log->total_rows,
+                'created_rows' => $log->created_rows,
+                'updated_rows' => $log->updated_rows,
+                'skipped_rows' => $log->skipped_rows,
+                'failed_rows' => $log->failed_rows,
+            ];
+
+            // Add created/updated records to audit trail (limit to first 50 each to avoid oversized logs)
+            if ($log->created_records && count($log->created_records) > 0) {
+                $newValues['created_records'] = array_slice($log->created_records, 0, 50);
+            }
+            if ($log->updated_records && count($log->updated_records) > 0) {
+                $newValues['updated_records'] = array_slice($log->updated_records, 0, 50);
+            }
+            if ($log->failed_records && count($log->failed_records) > 0) {
+                $newValues['failed_records'] = array_slice($log->failed_records, 0, 50);
+            }
+            if ($log->skipped_records && count($log->skipped_records) > 0) {
+                $newValues['skipped_records'] = array_slice($log->skipped_records, 0, 50);
+            }
+
+            AuditLogService::log(
+                action: 'IMPORT_COMPLETED',
+                module: 'Import',
+                description: $description,
+                target: null,
+                newValues: $newValues
+            );
+
+            return redirect()->route('imports.result', $log->id);
+        }
     }
 
     public function result(int $logId)

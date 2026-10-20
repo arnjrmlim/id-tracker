@@ -6,6 +6,7 @@ use App\Enums\IdStatus;
 use App\Http\Requests\StoreIdRecordRequest;
 use App\Http\Requests\UpdateIdRecordRequest;
 use App\Models\IdRecord;
+use App\Services\AuditLogService;
 use App\Services\ImageUploadService;
 use App\Services\NameNormalizationService;
 use Illuminate\Http\Request;
@@ -81,7 +82,6 @@ class IdRecordController extends Controller
             $data['request_status'] = 'pending';
             $data['requested_by'] = $user->id;
             $data['requested_at'] = now();
-            // ID Staff cannot assign ID number - validation already forced to null
         } else {
             // Admin creates approved record directly
             $data['request_status'] = 'approved';
@@ -107,7 +107,38 @@ class IdRecordController extends Controller
         // Remove file upload fields — not DB columns
         unset($data['image_file'], $data['signature_file']);
 
-        IdRecord::create($data);
+        $idRecord = IdRecord::create($data);
+
+        // Log audit trail
+        if ($user->isIdStaff()) {
+            AuditLogService::log(
+                action: 'ID_CREATE_REQUEST_SUBMITTED',
+                module: 'ID Requests',
+                description: "Submitted New ID Record request #{$idRecord->id} for {$idRecord->name}.",
+                target: $idRecord,
+                newValues: [
+                    'name' => $idRecord->name,
+                    'id_number' => $idRecord->id_number,
+                    'position' => $idRecord->position,
+                    'employment_type' => $idRecord->employment_type,
+                    'request_status' => 'Pending',
+                ]
+            );
+        } else {
+            AuditLogService::log(
+                action: 'ID_RECORD_CREATED',
+                module: 'ID Records',
+                description: "Created ID record #{$idRecord->id_number} for {$idRecord->name}.",
+                target: $idRecord,
+                newValues: [
+                    'name' => $idRecord->name,
+                    'id_number' => $idRecord->id_number,
+                    'position' => $idRecord->position,
+                    'employment_type' => $idRecord->employment_type,
+                    'status' => $idRecord->status,
+                ]
+            );
+        }
 
         $message = $user->isIdStaff()
             ? 'ID record submitted for approval.'
@@ -133,6 +164,13 @@ class IdRecordController extends Controller
     public function update(UpdateIdRecordRequest $request, IdRecord $idRecord)
     {
         $this->authorize('update', $idRecord);
+
+        $oldValues = [
+            'name' => $idRecord->name,
+            'position' => $idRecord->position,
+            'employment_type' => $idRecord->employment_type,
+            'id_number' => $idRecord->id_number,
+        ];
 
         $data = $request->validated();
         unset($data['status']); // status is never changed via this route
@@ -171,6 +209,25 @@ class IdRecordController extends Controller
 
         $idRecord->update($data);
 
+        $newValues = [
+            'name' => $idRecord->name,
+            'position' => $idRecord->position,
+            'employment_type' => $idRecord->employment_type,
+            'id_number' => $idRecord->id_number,
+        ];
+
+        // Only log if meaningful fields changed
+        if ($oldValues !== $newValues) {
+            AuditLogService::log(
+                action: 'ID_RECORD_UPDATED',
+                module: 'ID Records',
+                description: "Updated ID record #{$idRecord->id_number} for {$idRecord->name}.",
+                target: $idRecord,
+                oldValues: $oldValues,
+                newValues: $newValues
+            );
+        }
+
         return redirect()->route('id-records.show', $idRecord)
             ->with('success', 'ID record updated successfully.');
     }
@@ -181,7 +238,22 @@ class IdRecordController extends Controller
 
         // Note: we soft-delete so uploaded files are NOT deleted here.
         // Only permanently deleted records would need file cleanup.
+        $recordData = [
+            'name' => $idRecord->name,
+            'id_number' => $idRecord->id_number,
+            'position' => $idRecord->position,
+        ];
+
         $idRecord->delete();
+
+        AuditLogService::log(
+            action: 'ID_RECORD_DELETED',
+            module: 'ID Records',
+            description: "Deleted ID record #{$recordData['id_number']} for {$recordData['name']}.",
+            target: null,
+            oldValues: $recordData,
+            newValues: null
+        );
 
         return redirect()->route('id-records.index')
             ->with('success', 'ID record deleted. It can be restored by an administrator.');
@@ -205,6 +277,17 @@ class IdRecordController extends Controller
 
         $record = IdRecord::onlyTrashed()->findOrFail($id);
         $record->restore();
+
+        AuditLogService::log(
+            action: 'ID_RECORD_RESTORED',
+            module: 'ID Records',
+            description: "Restored ID record #{$record->id_number} for {$record->name}.",
+            target: $record,
+            newValues: [
+                'name' => $record->name,
+                'id_number' => $record->id_number,
+            ]
+        );
 
         return redirect()->route('id-records.trashed')
             ->with('success', 'ID record restored successfully.');

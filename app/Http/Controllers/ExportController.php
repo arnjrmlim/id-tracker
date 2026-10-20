@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\IdRecordExport;
 use App\Models\IdRecord;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -55,6 +56,49 @@ class ExportController extends Controller
         );
 
         $filename = 'id_records_' . now()->format('Ymd_His') . '.xlsx';
+        $recordCount = count($ids) ?: IdRecord::query()
+            ->search($request->input('search'))
+            ->filterStatus($request->input('status'))
+            ->filterEmploymentType($request->input('employment_type'))
+            ->count();
+
+        $statusFilter = $request->input('status');
+        $searchTerm = $request->input('search');
+
+        // Build description with filters
+        $filters = [];
+        if ($statusFilter) {
+            $filters[] = "Status: {$statusFilter}";
+        }
+        if ($searchTerm) {
+            $filters[] = "Search: {$searchTerm}";
+        }
+
+        $description = !empty($filters)
+            ? "Exported {$recordCount} ID records to template format (" . implode(', ', $filters) . ")."
+            : "Exported {$recordCount} ID records to template format.";
+
+        $newValues = [
+            'filename' => $filename,
+            'record_count' => $recordCount,
+            'format' => 'template',
+        ];
+
+        if ($statusFilter) {
+            $newValues['status_filter'] = $statusFilter;
+        }
+        if ($searchTerm) {
+            $newValues['search_term'] = $searchTerm;
+        }
+
+        AuditLogService::log(
+            action: 'EXPORT_COMPLETED',
+            module: 'Export',
+            description: $description,
+            target: null,
+            newValues: $newValues
+        );
+
         return Excel::download($export, $filename);
     }
 
@@ -92,6 +136,49 @@ class ExportController extends Controller
         );
 
         $filename = 'id_tracker_report_' . now()->format('Ymd_His') . '.xlsx';
+        $recordCount = count($ids) ?: IdRecord::query()
+            ->search($request->input('search'))
+            ->filterStatus($request->input('status'))
+            ->filterEmploymentType($request->input('employment_type'))
+            ->count();
+
+        $statusFilter = $request->input('status');
+        $searchTerm = $request->input('search');
+
+        // Build description with filters
+        $filters = [];
+        if ($statusFilter) {
+            $filters[] = "Status: {$statusFilter}";
+        }
+        if ($searchTerm) {
+            $filters[] = "Search: {$searchTerm}";
+        }
+
+        $description = !empty($filters)
+            ? "Exported {$recordCount} ID records to report format (" . implode(', ', $filters) . ")."
+            : "Exported {$recordCount} ID records to report format.";
+
+        $newValues = [
+            'filename' => $filename,
+            'record_count' => $recordCount,
+            'format' => 'report',
+        ];
+
+        if ($statusFilter) {
+            $newValues['status_filter'] = $statusFilter;
+        }
+        if ($searchTerm) {
+            $newValues['search_term'] = $searchTerm;
+        }
+
+        AuditLogService::log(
+            action: 'EXPORT_COMPLETED',
+            module: 'Export',
+            description: $description,
+            target: null,
+            newValues: $newValues
+        );
+
         return Excel::download($export, $filename);
     }
 

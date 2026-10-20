@@ -14,16 +14,8 @@ class ApproveIdRecordRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
-            'id_number' => ['required', 'string', 'max:50', 'unique:id_records,id_number'],
-        ];
-    }
-
-    public function messages(): array
-    {
-        return [
-            'id_number.required' => 'ID Number is required when approving a request.',
-            'id_number.unique' => 'This ID Number is already assigned to another record.',
-        ];
+        // ID Number is now entered by ID Staff at creation time, so approval
+        // no longer requires any user-supplied fields.
+        return [];
     }
 }

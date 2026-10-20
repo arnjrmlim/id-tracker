@@ -18,14 +18,19 @@ class ImportLog extends Model
         'failed_rows',
         'imported_by',
         'errors',
+        'created_records',
+        'updated_records',
+        'failed_records',
+        'skipped_records',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'errors' => 'array',
-        ];
-    }
+    protected $casts = [
+        'errors' => 'array',
+        'created_records' => 'array',
+        'updated_records' => 'array',
+        'failed_records' => 'array',
+        'skipped_records' => 'array',
+    ];
 
     // ── Relationships ──────────────────────────────────────────────────────────
 

@@ -47,6 +47,7 @@
                 <thead class="table-light">
                     <tr>
                         <th>Name</th>
+                        <th>ID No.</th>
                         <th>Position</th>
                         <th>Employment Type</th>
                         <th>Requested By</th>
@@ -58,6 +59,7 @@
                     @foreach($requests as $request)
                     <tr>
                         <td class="fw-semibold">{{ $request->name }}</td>
+                        <td class="fw-mono">{{ $request->id_number ?? '—' }}</td>
                         <td>{{ $request->position ?? '—' }}</td>
                         <td>
                             @if($request->employment_type)

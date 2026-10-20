@@ -25,12 +25,22 @@
                             <div class="small text-muted">New Records</div>
                         </div>
                     </div>
+                    @if(($preview['existing'] ?? 0) > 0)
                     <div class="col-6 col-md-3">
                         <div class="border rounded p-3 text-center">
                             <div class="fs-3 fw-bold text-warning">{{ $preview['existing'] }}</div>
                             <div class="small text-muted">Will Update</div>
                         </div>
                     </div>
+                    @endif
+                    @if(($preview['skipped'] ?? 0) > 0)
+                    <div class="col-6 col-md-3">
+                        <div class="border rounded p-3 text-center">
+                            <div class="fs-3 fw-bold text-secondary">{{ $preview['skipped'] }}</div>
+                            <div class="small text-muted">Will Skip</div>
+                        </div>
+                    </div>
+                    @endif
                     <div class="col-6 col-md-3">
                         <div class="border rounded p-3 text-center">
                             <div class="fs-3 fw-bold text-danger">{{ $preview['invalid'] }}</div>
@@ -39,11 +49,29 @@
                     </div>
                 </div>
 
-                @if($preview['existing'] > 0)
+                @if(($preview['existing'] ?? 0) > 0)
                 <div class="alert alert-warning small">
                     <i class="bi bi-shield-check me-1"></i>
-                    <strong>{{ $preview['existing'] }} existing records</strong> will be updated.
+                    <strong>{{ $preview['existing'] }} existing record(s)</strong> will be updated.
                     Their current ID status will <strong>not</strong> be changed.
+                </div>
+                @endif
+
+                @if(($preview['skipped'] ?? 0) > 0)
+                <div class="alert alert-secondary small">
+                    <i class="bi bi-skip-forward me-1"></i>
+                    <strong>{{ $preview['skipped'] }} existing record(s)</strong> will be skipped
+                    because you are in <strong>Add New Only</strong> mode.
+                    Only new ID numbers will be created.
+                </div>
+                @endif
+
+                @if($isIdStaff)
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <strong>Administrator Approval Required</strong>
+                    <br>
+                    Because you are an ID Staff user, this import will be submitted as a pending request for Administrator review and approval.
                 </div>
                 @endif
 
@@ -90,9 +118,15 @@
                         <a href="{{ route('imports.index') }}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left me-1"></i>Back
                         </a>
+                        @if($isIdStaff)
+                        <button type="submit" class="btn btn-warning" @if($preview['total'] === 0) disabled @endif>
+                            <i class="bi bi-send me-1"></i>Submit for Approval
+                        </button>
+                        @else
                         <button type="submit" class="btn btn-primary" @if($preview['total'] === 0) disabled @endif>
                             <i class="bi bi-cloud-upload me-1"></i>Confirm Import
                         </button>
+                        @endif
                     </div>
                 </form>
             </div>

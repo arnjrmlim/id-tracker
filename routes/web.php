@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\AuditTrailController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BulkImageDownloadController;
 use App\Http\Controllers\IdRecordApprovalController;
 use App\Http\Controllers\IdRecordImageController;
+use App\Http\Controllers\ImportRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\IdRecordController;
@@ -59,6 +61,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('import/result/{logId}', [ImportController::class, 'result'])->name('imports.result');
     Route::get('import/template', [ImportController::class, 'downloadTemplate'])->name('imports.template');
 
+    // Import Request approval workflow (admin only for approve/reject)
+    Route::prefix('import-requests')->name('import-requests.')->group(function () {
+        Route::get('/', [ImportRequestController::class, 'index'])->name('index');
+        Route::get('/my-requests', [ImportRequestController::class, 'myRequests'])->name('my-requests');
+        Route::get('/{importRequest}', [ImportRequestController::class, 'show'])->name('show');
+        Route::post('/{importRequest}/approve', [ImportRequestController::class, 'approve'])->name('approve');
+        Route::post('/{importRequest}/reject', [ImportRequestController::class, 'reject'])->name('reject');
+    });
+
     // Export
     Route::get('export', [ExportController::class, 'index'])->name('exports.index');
     Route::post('export/template', [ExportController::class, 'exportTemplate'])->name('exports.template');
@@ -73,6 +84,12 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('users/{user}/activate', [UserController::class, 'activate'])->name('users.activate');
     Route::patch('users/{user}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
     Route::patch('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+
+    // Audit Trail (admin only)
+    Route::prefix('audit-trail')->name('audit-trail.')->group(function () {
+        Route::get('/', [AuditTrailController::class, 'index'])->name('index');
+        Route::get('/{auditLog}', [AuditTrailController::class, 'show'])->name('show');
+    });
 
     // Settings — Automatic Backup (admin only — enforced via Gate::authorize inside controller)
     Route::prefix('settings')->name('settings.')->group(function () {

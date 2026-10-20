@@ -156,6 +156,7 @@
         @if($u->isAdmin())
         @php
             $pendingCount = \App\Models\IdRecord::pendingApproval()->count();
+            $pendingImportCount = \App\Models\ImportRequest::pending()->count();
         @endphp
         <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('id-requests.*') ? 'active' : '' }}" href="{{ route('id-requests.index') }}">
@@ -167,11 +168,38 @@
         </li>
         @endif
 
+        {{-- Pending Import Requests: admin only --}}
+        @if($u->isAdmin())
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('import-requests.*') ? 'active' : '' }}" href="{{ route('import-requests.index') }}">
+                <i class="bi bi-file-earmark-excel"></i> Import Requests
+                @if($pendingImportCount > 0)
+                <span class="badge bg-warning text-dark ms-auto">{{ $pendingImportCount }}</span>
+                @endif
+            </a>
+        </li>
+        @endif
+
         {{-- My ID Requests: id staff only --}}
         @if($u->isIdStaff())
         <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('id-requests.my-requests') ? 'active' : '' }}" href="{{ route('id-requests.my-requests') }}">
                 <i class="bi bi-list-check"></i> My Requests
+            </a>
+        </li>
+        @endif
+
+        {{-- My Import Requests: id staff only --}}
+        @if($u->isIdStaff())
+        @php
+            $pendingImportCount = \App\Models\ImportRequest::byRequester($u->id)->pending()->count();
+        @endphp
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('import-requests.my-requests') ? 'active' : '' }}" href="{{ route('import-requests.my-requests') }}">
+                <i class="bi bi-file-earmark-excel"></i> My Import Requests
+                @if($pendingImportCount > 0)
+                <span class="badge bg-warning text-dark ms-auto">{{ $pendingImportCount }}</span>
+                @endif
             </a>
         </li>
         @endif
@@ -200,6 +228,12 @@
         <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
                 <i class="bi bi-people-fill"></i> Users
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('audit-trail.*') ? 'active' : '' }}" href="{{ route('audit-trail.index') }}">
+                <i class="bi bi-journal-text"></i> Audit Trail
             </a>
         </li>
 

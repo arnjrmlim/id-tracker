@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\BackupSettingsRequest;
 use App\Models\BackupHistory;
 use App\Models\BackupSetting;
+use App\Services\AuditLogService;
 use App\Services\BackupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -33,6 +34,7 @@ class BackupController extends Controller
     {
         Gate::authorize('admin-only');
 
+        $oldSettings = BackupSetting::getInstance()->toArray();
         $data = $request->validated();
 
         // Normalise time to H:i:s
@@ -49,6 +51,35 @@ class BackupController extends Controller
         }
 
         BackupSetting::getInstance()->update($data);
+
+        $newSettings = BackupSetting::getInstance()->toArray();
+
+        // Filter sensitive data for audit log
+        $filteredOld = array_intersect_key($oldSettings, array_flip([
+            'enabled',
+            'frequency',
+            'backup_time',
+            'weekly_day',
+            'monthly_day',
+            'retention_days',
+        ]));
+        $filteredNew = array_intersect_key($newSettings, array_flip([
+            'enabled',
+            'frequency',
+            'backup_time',
+            'weekly_day',
+            'monthly_day',
+            'retention_days',
+        ]));
+
+        AuditLogService::log(
+            action: 'SETTINGS_UPDATED',
+            module: 'Settings',
+            description: 'Updated backup configuration settings.',
+            target: null,
+            oldValues: $filteredOld,
+            newValues: $filteredNew
+        );
 
         return redirect()->route('settings.backup.index')
             ->with('success', 'Backup settings saved successfully.');

@@ -47,6 +47,26 @@ class User extends Authenticatable
         return $this->hasMany(ImportLog::class, 'imported_by');
     }
 
+    public function auditLogs()
+    {
+        return $this->hasMany(AuditLog::class);
+    }
+
+    public function importRequests()
+    {
+        return $this->hasMany(ImportRequest::class, 'requested_by');
+    }
+
+    public function approvedImportRequests()
+    {
+        return $this->hasMany(ImportRequest::class, 'approved_by');
+    }
+
+    public function rejectedImportRequests()
+    {
+        return $this->hasMany(ImportRequest::class, 'rejected_by');
+    }
+
     // ── Role helpers ───────────────────────────────────────────────────────────
 
     /** Full administrator — all permissions. */

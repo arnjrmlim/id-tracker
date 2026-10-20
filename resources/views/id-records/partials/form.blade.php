@@ -6,7 +6,6 @@
     $sigPath       = old('signature_path',   $rec?->signature_path   ?? '');
     $imgUpload     = $rec?->image_upload_path;
     $sigUpload     = $rec?->signature_upload_path;
-    $isIdStaff     = $isIdStaff ?? false;
 @endphp
 
 <div class="row g-3">
@@ -22,22 +21,13 @@
     </div>
 
     <div class="col-md-4">
-        <label for="id_number" class="form-label fw-semibold">ID Number @if(!$isIdStaff && !$rec) <span class="text-danger">*</span> @endif</label>
-        @if($isIdStaff && !$rec)
-        <input type="text" id="id_number" name="id_number"
-               class="form-control bg-light"
-               value="Assigned by Admin upon approval"
-               disabled readonly>
-        <input type="hidden" name="id_number" value="">
-        <div class="form-text">ID Number will be assigned by Admin after approval.</div>
-        @else
+        <label for="id_number" class="form-label fw-semibold">ID Number @if(!$rec) <span class="text-danger">*</span> @endif</label>
         <input type="text" id="id_number" name="id_number"
                class="form-control @error('id_number') is-invalid @enderror"
                value="{{ old('id_number', $rec->id_number ?? '') }}"
                @if(!$rec) required @endif
                placeholder="e.g. 200473">
         @error('id_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
-        @endif
     </div>
 
     {{-- ── Position / Date Hired ── --}}

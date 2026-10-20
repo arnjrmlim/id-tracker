@@ -62,9 +62,6 @@ class NameNormalizationService
      * Handles null values safely by returning null.
      * Trims whitespace and collapses multiple spaces.
      *
-     * This is a simpler version of normalize() for fields that don't need
-     * special handling for apostrophes/hyphens (e.g., Position, Emergency Contact).
-     *
      * @param string|null $value The raw field input
      * @return string|null The normalized field value, or null if input was null/empty
      */
@@ -84,7 +81,7 @@ class NameNormalizationService
         $words = explode(' ', $value);
 
         // Capitalize first letter of each word, lowercase the rest
-        $normalized = array_map(function($word) {
+        $normalized = array_map(function ($word) {
             if (mb_strlen($word) > 0) {
                 return mb_strtoupper(mb_substr($word, 0, 1)) . mb_strtolower(mb_substr($word, 1));
             }

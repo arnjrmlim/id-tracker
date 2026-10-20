@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ApproveIdRecordRequest;
 use App\Http\Requests\RejectIdRecordRequest;
 use App\Models\IdRecord;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
@@ -59,11 +60,24 @@ class IdRecordApprovalController extends Controller
         }
 
         $idRecord->update([
-            'id_number' => $request->validated('id_number'),
             'request_status' => 'approved',
             'approved_by' => $request->user()->id,
             'approved_at' => now(),
         ]);
+
+        AuditLogService::log(
+            action: 'ID_CREATE_REQUEST_APPROVED',
+            module: 'ID Requests',
+            description: "Approved New ID Record request #{$idRecord->id} for {$idRecord->name} (ID No. {$idRecord->id_number}).",
+            target: $idRecord,
+            oldValues: [
+                'request_status' => 'Pending',
+            ],
+            newValues: [
+                'request_status' => 'Approved',
+                'id_number' => $idRecord->id_number,
+            ]
+        );
 
         return redirect()->route('id-requests.index')
             ->with('success', 'ID record approved successfully.');
@@ -87,6 +101,20 @@ class IdRecordApprovalController extends Controller
             'rejected_at' => now(),
             'rejection_reason' => $request->validated('rejection_reason'),
         ]);
+
+        AuditLogService::log(
+            action: 'ID_CREATE_REQUEST_REJECTED',
+            module: 'ID Requests',
+            description: "Rejected New ID Record request #{$idRecord->id} for {$idRecord->name}. Reason: {$request->validated('rejection_reason')}",
+            target: $idRecord,
+            oldValues: [
+                'request_status' => 'Pending',
+            ],
+            newValues: [
+                'request_status' => 'Rejected',
+                'rejection_reason' => $request->validated('rejection_reason'),
+            ]
+        );
 
         return redirect()->route('id-requests.index')
             ->with('success', 'ID record request rejected.');

@@ -6,6 +6,7 @@ use App\Enums\IdStatus;
 use App\Models\IdRecord;
 use App\Models\IdStatusHistory;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -49,7 +50,7 @@ class IdStatusService
         ) {
             $idRecord->update(['status' => $statusEnum->value]);
 
-            return IdStatusHistory::create([
+            $history = IdStatusHistory::create([
                 'id_record_id'          => $idRecord->id,
                 'old_status'            => $oldStatus,
                 'new_status'            => $statusEnum->value,
@@ -58,6 +59,19 @@ class IdStatusService
                 // Stored separately — does NOT overwrite created_at
                 'effective_status_date' => $effectiveStatusDate ?: null,
             ]);
+
+            // Log to audit trail
+            AuditLogService::log(
+                action: 'ID_STATUS_CHANGED',
+                module: 'Status',
+                description: "Changed status for ID record #{$idRecord->id_number} ({$idRecord->name}) from {$oldStatus} to {$statusEnum->value}.",
+                target: $idRecord,
+                oldValues: ['status' => $oldStatus],
+                newValues: ['status' => $statusEnum->value],
+                user: $changedBy
+            );
+
+            return $history;
         });
     }
 
@@ -108,6 +122,19 @@ class IdStatusService
                 ]);
                 $updated++;
             }
+
+            // Log bulk status change to audit trail
+            AuditLogService::log(
+                action: 'ID_STATUS_BULK_CHANGED',
+                module: 'Status',
+                description: "Bulk changed status for {$updated} ID records to {$statusEnum->value}.",
+                target: null,
+                newValues: [
+                    'new_status' => $statusEnum->value,
+                    'records_updated' => $updated,
+                ],
+                user: $changedBy
+            );
         });
 
         return ['updated' => $updated, 'skipped' => $skipped];

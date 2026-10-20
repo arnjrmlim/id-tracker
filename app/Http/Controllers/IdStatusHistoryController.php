@@ -51,7 +51,7 @@ class IdStatusHistoryController extends Controller
             $query->whereDate('effective_status_date', '<=', $effTo);
         }
 
-        $histories = $query->paginate(30)->withQueryString();
+        $histories = $query->paginate(25)->withQueryString();
         $statuses  = IdStatus::cases();
         // Only show admin filter to admins — ID Staff sees the full list but can't filter by changer
         $admins    = auth()->user()->isAdmin()
